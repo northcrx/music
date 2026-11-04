@@ -88,6 +88,7 @@ import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
 fun LibrarySettingsScreen(
     settingsViewModel: SettingsViewModel,
     onNavigateBack: () -> Unit,
+    onNavigateToFixMetadata: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -438,8 +439,7 @@ fun LibrarySettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    showMetadataDialog = true
-                                    settingsViewModel.startFixingMetadata()
+                                    onNavigateToFixMetadata()
                                 }
                                 .padding(horizontal = 20.dp, vertical = 14.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,

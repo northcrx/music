@@ -74,6 +74,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.nishant.northmusic.ui.components.AppLogo
 import com.nishant.northmusic.data.model.Song
 import com.nishant.northmusic.data.repository.normalizeText
 import com.nishant.northmusic.navigation.BottomListScrollPadding
@@ -163,7 +164,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // TOP HEADER (80/20): 80% search bar + 20% settings gear icon button
+        // TOP HEADER: 40dp logo + search bar + settings gear icon button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -171,10 +172,14 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 80% width search bar
+            if (!isSearchActive) {
+                AppLogo(size = 40.dp)
+            }
+
+            // Search bar
             Surface(
                 modifier = Modifier
-                    .weight(0.80f)
+                    .weight(1f)
                     .height(50.dp),
                 shape = RoundedCornerShape(26.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -256,13 +261,7 @@ fun HomeScreen(
                 }
             }
 
-            // 20% width settings gear button
-            Box(
-                modifier = Modifier
-                    .weight(0.20f)
-                    .height(50.dp),
-                contentAlignment = Alignment.Center
-            ) {
+            if (!isSearchActive) {
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,

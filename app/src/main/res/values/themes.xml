@@ -2,4 +2,47 @@
 <resources>
 
     <style name="Theme.NorthMusic" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- 1. Default Blue Splash Theme -->
+    <style name="Theme.NorthMusic.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background_blue</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.NorthMusic</item>
+    </style>
+
+    <!-- 2. Nordic Teal Splash Theme -->
+    <style name="Theme.NorthMusic.Starting.Teal" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background_teal</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.NorthMusic</item>
+    </style>
+
+    <!-- 3. Midnight Slate Splash Theme -->
+    <style name="Theme.NorthMusic.Starting.Midnight" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background_midnight</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.NorthMusic</item>
+    </style>
+
+    <!-- 4. Electric Purple Splash Theme -->
+    <style name="Theme.NorthMusic.Starting.Purple" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background_purple</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.NorthMusic</item>
+    </style>
+
+    <!-- 5. Sunset Rose Splash Theme -->
+    <style name="Theme.NorthMusic.Starting.Rose" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background_rose</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.NorthMusic</item>
+    </style>
+
+    <!-- 6. Onyx Black Splash Theme -->
+    <style name="Theme.NorthMusic.Starting.Black" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background_black</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.NorthMusic</item>
+    </style>
+
 </resources>

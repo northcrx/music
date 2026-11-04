@@ -3,6 +3,8 @@ package com.nishant.northmusic.data.repository
 import android.content.Context
 import android.content.SharedPreferences
 import com.nishant.northmusic.data.model.AccentColor
+import com.nishant.northmusic.data.model.AppIcon
+import com.nishant.northmusic.util.AppIconManager
 import com.nishant.northmusic.data.model.SettingsState
 import com.nishant.northmusic.data.model.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +20,7 @@ object SettingsRepository {
 
     private const val PREFS_NAME = "north_music_settings_prefs"
     private var prefs: SharedPreferences? = null
+    private var appContext: Context? = null
 
     private val _settingsState = MutableStateFlow(SettingsState())
     val settingsState: StateFlow<SettingsState> = _settingsState.asStateFlow()
@@ -37,14 +40,22 @@ object SettingsRepository {
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
+        appContext = context.applicationContext
         val sp = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs = sp
 
         val savedAccent = try {
-            val name = sp.getString("accentColor", AccentColor.TEAL.name) ?: AccentColor.TEAL.name
+            val name = sp.getString("accentColor", AccentColor.BLUE.name) ?: AccentColor.BLUE.name
             AccentColor.valueOf(name)
         } catch (_: Exception) {
-            AccentColor.TEAL
+            AccentColor.BLUE
+        }
+
+        val savedAppIcon = try {
+            val name = sp.getString("appIcon", AppIcon.BLUE.name) ?: AppIcon.BLUE.name
+            AppIcon.valueOf(name)
+        } catch (_: Exception) {
+            AppIcon.BLUE
         }
 
         val savedTheme = try {
@@ -68,9 +79,12 @@ object SettingsRepository {
         val savedSplitAmpersand = sp.getBoolean("splitArtistsOnAmpersand", false)
         val savedDontSplitSet = sp.getStringSet("dontSplitArtistNames", null)
         val savedDontSplit = savedDontSplitSet?.toList() ?: listOf("AC/DC", "Guns N' Roses", "Simon & Garfunkel", "Earth, Wind & Fire")
+        val savedDownloadArt = sp.getBoolean("downloadArtistAndAlbumArt", false)
+        val savedWifiOnly = sp.getBoolean("downloadOnlyOnWifi", true)
 
         val loaded = SettingsState(
             accentColor = savedAccent,
+            appIcon = savedAppIcon,
             themeMode = savedTheme,
             dynamicColor = savedDynamic,
             setupDone = savedSetupDone,
@@ -84,7 +98,9 @@ object SettingsRepository {
             highQualityAudio = savedHighQuality,
             audioFocus = savedAudioFocus,
             splitArtistsOnAmpersand = savedSplitAmpersand,
-            dontSplitArtistNames = savedDontSplit
+            dontSplitArtistNames = savedDontSplit,
+            downloadArtistAndAlbumArt = savedDownloadArt,
+            downloadOnlyOnWifi = savedWifiOnly
         )
 
         _settingsState.value = loaded
@@ -105,8 +121,12 @@ object SettingsRepository {
             if (updated.accentColor != _accentColor.value) {
                 _accentColor.value = updated.accentColor
             }
+            if (updated.appIcon != current.appIcon) {
+                appContext?.let { AppIconManager.setAppIcon(it, updated.appIcon) }
+            }
 
             prefs?.edit()?.apply {
+                putString("appIcon", updated.appIcon.name)
                 putString("accentColor", updated.accentColor.name)
                 putString("themeMode", updated.themeMode.name)
                 putBoolean("dynamicColor", updated.dynamicColor)
@@ -122,6 +142,8 @@ object SettingsRepository {
                 putBoolean("audioFocus", updated.audioFocus)
                 putBoolean("splitArtistsOnAmpersand", updated.splitArtistsOnAmpersand)
                 putStringSet("dontSplitArtistNames", updated.dontSplitArtistNames.toSet())
+                putBoolean("downloadArtistAndAlbumArt", updated.downloadArtistAndAlbumArt)
+                putBoolean("downloadOnlyOnWifi", updated.downloadOnlyOnWifi)
                 apply()
             }
 

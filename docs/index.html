@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>North Music — Nocturnal High-Res Audio Player for Android</title>
+    <meta name="description" content="Download North Music v0.1 — A sleek, responsive nocturnal music player designed with Material 3 Expressive. High-res audio, hardware equalizer, sleep timer, live lyrics, and offline playback.">
+    <meta name="theme-color" content="#0B0F17">
+    
+    <!-- Open Graph / Social Meta -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="North Music — Nocturnal Audio Player for Android">
+    <meta property="og:description" content="Download North Music v0.1 APK. 100% offline, zero ads, real-time equalizer, sleep timer, and live lyrics.">
+    <meta property="og:image" content="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Crect width='108' height='108' rx='28' fill='%232563EB'/%3E%3Cpath fill='%23ffffff' d='M28.5,48.5a3.5,3.5 0 0 1 7,0v11a3.5,3.5 0 0 1 -7,0z M39.5,37.5a3.5,3.5 0 0 1 7,0v33a3.5,3.5 0 0 1 -7,0z M50.5,28.5a3.5,3.5 0 0 1 7,0v51a3.5,3.5 0 0 1 -7,0z M61.5,41.5a3.5,3.5 0 0 1 7,0v25a3.5,3.5 0 0 1 -7,0z M72.5,47.5a3.5,3.5 0 0 1 7,0v13a3.5,3.5 0 0 1 -7,0z'/%3E%3C/svg%3E">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Crect width='108' height='108' rx='28' fill='%232563EB'/%3E%3Cpath fill='%23ffffff' d='M28.5,48.5a3.5,3.5 0 0 1 7,0v11a3.5,3.5 0 0 1 -7,0z M39.5,37.5a3.5,3.5 0 0 1 7,0v33a3.5,3.5 0 0 1 -7,0z M50.5,28.5a3.5,3.5 0 0 1 7,0v51a3.5,3.5 0 0 1 -7,0z M61.5,41.5a3.5,3.5 0 0 1 7,0v25a3.5,3.5 0 0 1 -7,0z M72.5,47.5a3.5,3.5 0 0 1 7,0v13a3.5,3.5 0 0 1 -7,0z'/%3E%3C/svg%3E">
+
+    <style>
+        :root {
+            --bg-dark: #080C14;
+            --bg-surface: #0F172A;
+            --bg-card: rgba(18, 26, 44, 0.7);
+            --bg-card-hover: rgba(28, 40, 68, 0.85);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(37, 99, 235, 0.35);
+            --accent-blue: #2563EB;
+            --accent-blue-bright: #3B82F6;
+            --accent-teal: #14B8A6;
+            --accent-glow: rgba(37, 99, 235, 0.28);
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --text-muted: #64748B;
+            --warning-bg: rgba(245, 158, 11, 0.12);
+            --warning-border: rgba(245, 158, 11, 0.3);
+            --warning-text: #FBBF24;
+            --success-color: #10B981;
+            --pill-radius: 9999px;
+            --card-radius: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glow Background */
+        .ambient-glow {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1000px;
+            height: 600px;
+            background: radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.22) 0%, rgba(20, 184, 166, 0.12) 40%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(40px);
+        }
+
+        .container {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Navbar */
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px var(--accent-glow);
+            transition: transform 0.2s ease;
+        }
+
+        .brand:hover .brand-icon {
+            transform: scale(1.06);
+        }
+
+        .brand-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .btn-nav-download {
+            background: rgba(37, 99, 235, 0.15);
+            color: var(--accent-blue-bright) !important;
+            border: 1px solid var(--border-highlight);
+            padding: 8px 18px;
+            border-radius: var(--pill-radius);
+            font-weight: 600 !important;
+            transition: all 0.2s ease;
+        }
+
+        .btn-nav-download:hover {
+            background: var(--accent-blue);
+            color: #ffffff !important;
+            box-shadow: 0 4px 14px var(--accent-glow);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 72px 0 54px 0;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .version-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(37, 99, 235, 0.12);
+            border: 1px solid var(--border-highlight);
+            border-radius: var(--pill-radius);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-blue-bright);
+            margin-bottom: 24px;
+            letter-spacing: 0.02em;
+        }
+
+        .version-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success-color);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success-color);
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.25); }
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin-bottom: 20px;
+            max-width: 840px;
+            background: linear-gradient(180deg, #FFFFFF 30%, #94A3B8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 680px;
+            line-height: 1.6;
+            margin-bottom: 36px;
+        }
+
+        /* Action Buttons */
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+            color: #ffffff;
+            padding: 16px 36px;
+            border-radius: var(--pill-radius);
+            font-size: 1.15rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 10px 30px var(--accent-glow), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 36px rgba(37, 99, 235, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            padding: 16px 28px;
+            border-radius: var(--pill-radius);
+            font-size: 1.05rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: 1px solid var(--border-subtle);
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        .meta-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .meta-info span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Feature Grid */
+        .features {
+            padding: 50px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .section-tag {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent-teal);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--card-radius);
+            padding: 32px;
+            backdrop-filter: blur(16px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-highlight);
+            background: var(--bg-card-hover);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+        }
+
+        .feature-icon-wrapper {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: rgba(37, 99, 235, 0.12);
+            border: 1px solid var(--border-highlight);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            color: var(--accent-blue-bright);
+        }
+
+        .feature-card:nth-child(2) .feature-icon-wrapper {
+            background: rgba(20, 184, 166, 0.12);
+            border-color: rgba(20, 184, 166, 0.35);
+            color: var(--accent-teal);
+        }
+
+        .feature-card:nth-child(3) .feature-icon-wrapper {
+            background: rgba(124, 58, 237, 0.12);
+            border-color: rgba(124, 58, 237, 0.35);
+            color: #A78BFA;
+        }
+
+        .feature-card h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.98rem;
+            line-height: 1.6;
+        }
+
+        /* Installation Guide Section */
+        .install-section {
+            padding: 70px 0;
+        }
+
+        .install-box {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(11, 15, 23, 0.95) 100%);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--card-radius);
+            padding: 48px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .notice-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            border-radius: 18px;
+            padding: 20px 24px;
+            margin-bottom: 40px;
+        }
+
+        .notice-banner svg {
+            flex-shrink: 0;
+            color: var(--warning-text);
+            margin-top: 2px;
+        }
+
+        .notice-content h4 {
+            color: var(--warning-text);
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .notice-content p {
+            color: #E2E8F0;
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+
+        .steps-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .step-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 24px;
+            position: relative;
+        }
+
+        .step-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1rem;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .step-item h4 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .step-item p {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+
+        .badge-pill {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* FAQ Accordion */
+        .faq-section {
+            padding: 50px 0 80px 0;
+        }
+
+        .faq-list {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 22px 28px;
+        }
+
+        .faq-item h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .faq-item p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border-subtle);
+            padding: 40px 0;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        footer a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            .hero p {
+                font-size: 1.1rem;
+            }
+            .install-box {
+                padding: 28px 20px;
+            }
+            .nav-links .nav-link-item {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-glow"></div>
+
+    <div class="container">
+        <!-- Header / Navigation -->
+        <nav>
+            <a href="#" class="brand">
+                <svg class="brand-icon" viewBox="0 0 108 108" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="108" height="108" rx="28" fill="#2563EB"/>
+                    <path fill="#ffffff" d="M28.5,48.5a3.5,3.5 0 0 1 7,0v11a3.5,3.5 0 0 1 -7,0z M39.5,37.5a3.5,3.5 0 0 1 7,0v33a3.5,3.5 0 0 1 -7,0z M50.5,28.5a3.5,3.5 0 0 1 7,0v51a3.5,3.5 0 0 1 -7,0z M61.5,41.5a3.5,3.5 0 0 1 7,0v25a3.5,3.5 0 0 1 -7,0z M72.5,47.5a3.5,3.5 0 0 1 7,0v13a3.5,3.5 0 0 1 -7,0z"/>
+                </svg>
+                <span class="brand-title">North Music</span>
+            </a>
+
+            <div class="nav-links">
+                <a href="#features" class="nav-link-item">Features</a>
+                <a href="#install-guide" class="nav-link-item">Install Guide</a>
+                <a href="https://github.com/northcrx/music" class="nav-link-item" target="_blank" rel="noopener">GitHub</a>
+                <a href="https://github.com/northcrx/music/releases/download/v0.1/NorthMusic-v0.1.apk" class="btn-nav-download">
+                    Download APK
+                </a>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="version-badge">
+                <span class="version-dot"></span>
+                <span>Version 0.1 Beta Released</span>
+            </div>
+
+            <h1>Nocturnal High-Res Audio Player for Android</h1>
+            <p>A sleek, responsive music player built with Material 3 Expressive. Hardware-accelerated equalizer, seamless sleep timer, live lyrics, and offline playback.</p>
+
+            <div class="hero-actions">
+                <!-- Direct APK Download Button from GitHub Release -->
+                <a href="https://github.com/northcrx/music/releases/download/v0.1/NorthMusic-v0.1.apk" class="btn-primary" id="download-btn">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                    </svg>
+                    <span>Download v0.1 APK (54.3 MB)</span>
+                </a>
+
+                <a href="#install-guide" class="btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>Installation Guide</span>
+                </a>
+
+                <a href="https://github.com/northcrx/music/releases/tag/v0.1" target="_blank" rel="noopener" class="btn-secondary" style="border-color: rgba(37, 99, 235, 0.35);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                    </svg>
+                    <span>Release on GitHub</span>
+                </a>
+            </div>
+
+            <div class="meta-info">
+                <span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.68-.05-.85.26l-1.88 3.24c-1.34-.59-2.85-.94-4.45-.94s-3.11.35-4.45.94L5.67 5.71c-.17-.31-.56-.41-.85-.26-.31.16-.42.54-.26.85l1.84 3.18C2.89 11.4 0 15.34 0 20h24c0-4.66-2.89-8.6-6.4-10.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25zm10 0c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z"/></svg>
+                    Android 10+ (API 29–36)
+                </span>
+                <span>•</span>
+                <span>100% Offline & Private</span>
+                <span>•</span>
+                <span>Zero Ads</span>
+                <span>•</span>
+                <span>Material 3 Expressive</span>
+            </div>
+        </section>
+
+        <!-- Feature Highlights -->
+        <section class="features" id="features">
+            <div class="section-header">
+                <div class="section-tag">Crafted For Audiophiles</div>
+                <h2 class="section-title">Designed with Precision</h2>
+            </div>
+
+            <div class="features-grid">
+                <!-- Feature 1 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        </svg>
+                    </div>
+                    <h3>Local MediaStore Audio</h3>
+                    <p>High-resolution local playback powered by Jetpack Media3 & ExoPlayer. Automated smart grouping by artist & album, gapless audio, and full blacklist folder management.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 20h2V8H7v12zm4 0h2V4h-2v16zm4 0h2v-8h-2v8zm4 0h2V10h-2v10z"/>
+                        </svg>
+                    </div>
+                    <h3>Parametric Equalizer</h3>
+                    <p>Real hardware-backed Android audiofx Equalizer, Bass Boost, Virtualizer, and Loudness Enhancer with automated output device profiles for Bluetooth, Wired, and Speaker.</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                        </svg>
+                    </div>
+                    <h3>Smooth Sleep Timer</h3>
+                    <p>Fade-out volume curve over 10 seconds with "Finish last song" option. Operates as a persistent foreground playback service even when your screen is locked.</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+                        </svg>
+                    </div>
+                    <h3>Live Synced Lyrics</h3>
+                    <p>Synchronized real-time scrolling lyrics view with current line centering, translations, and romanized transliteration support.</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.57 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/>
+                        </svg>
+                    </div>
+                    <h3>6 Launcher Icon Styles</h3>
+                    <p>Switch between Default Blue, Nordic Teal, Midnight, Purple, Rose, and Onyx Black launcher icons directly from Settings or the Setup Wizard.</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                        </svg>
+                    </div>
+                    <h3>Artwork & Tag Editor</h3>
+                    <p>Automatic missing album cover and artist photo downloaders from iTunes and Deezer, along with a built-in ID3 tag and metadata editor.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Installation Instructions Section -->
+        <section class="install-section" id="install-guide">
+            <div class="install-box">
+                <div class="section-header" style="margin-bottom: 32px;">
+                    <div class="section-tag">Required Android Settings</div>
+                    <h2 class="section-title">How to Install the APK on Your Phone</h2>
+                    <p style="color: var(--text-secondary); max-width: 600px; margin: 8px auto 0 auto;">
+                        Because North Music is downloaded directly outside the Google Play Store, Android requires you to enable a one-time permission to install it.
+                    </p>
+                </div>
+
+                <!-- Warning / Explanatory Notice -->
+                <div class="notice-banner">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                    </svg>
+                    <div class="notice-content">
+                        <h4>"File might be harmful" or "Unknown app" warning?</h4>
+                        <p>This is standard on Android for any app installed from outside the Google Play Store. North Music contains zero malware, zero tracking ads, and operates 100% offline. Follow the steps below to complete installation safely.</p>
+                    </div>
+                </div>
+
+                <!-- 4 Step Guide -->
+                <div class="steps-container">
+                    <!-- Step 1 -->
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <h4>Download the APK</h4>
+                        <p>Tap the <span class="badge-pill">Download APK</span> button above. When your browser (Chrome/Brave) displays <em>"File might be harmful"</em>, tap <strong>Download anyway</strong>.</p>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <h4>Enable Unknown Apps</h4>
+                        <p>Open the downloaded file. When prompted with <em>"For security, your phone cannot install unknown apps from this source"</em>, tap <strong>Settings</strong> and toggle ON <span class="badge-pill">Allow from this source</span>.</p>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <h4>Play Protect Prompt</h4>
+                        <p>If Google Play Protect displays <em>"Unrecognized app"</em>, tap <strong>More details</strong> (or the down arrow) and select <strong>Install anyway</strong>.</p>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <h4>Grant Permissions</h4>
+                        <p>On initial launch, tap <strong>Allow</strong> when requested for <span class="badge-pill">Audio files</span> access so North Music can index your local music library.</p>
+                    </div>
+                </div>
+
+                <!-- Manual Navigation path helper -->
+                <div style="background: rgba(0, 0, 0, 0.35); border-radius: 14px; padding: 18px 22px; border: 1px solid var(--border-subtle); font-size: 0.9rem; color: var(--text-secondary);">
+                    <strong style="color: var(--text-primary);">Manual Settings Path:</strong> 
+                    Settings → Apps → Special app access → Install unknown apps → Tap your browser (e.g. Chrome) or Files app → Enable <em>"Allow from this source"</em>.
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq-section">
+            <div class="section-header">
+                <div class="section-tag">Frequently Asked Questions</div>
+                <h2 class="section-title">Common Questions</h2>
+            </div>
+
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h4>Why is this warning shown by Android?</h4>
+                    <p>Android displays the "Unknown apps" security prompt for all APK files installed directly from a web browser or file manager rather than the Google Play Store. It is a safeguard prompting user confirmation before sideloading an application package.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h4>What permissions does North Music ask for?</h4>
+                    <p>North Music only requests <strong>Read Audio Files</strong> (to scan and play your device's audio files) and <strong>Notifications</strong> (Android 13+ to show playback controls and sleep timer countdown in the notification shade).</p>
+                </div>
+
+                <div class="faq-item">
+                    <h4>Which audio formats are supported?</h4>
+                    <p>North Music supports high-res FLAC, MP3, AAC, M4A, OGG Vorbis, Opus, and WAV formats with seamless gapless playback via Media3 ExoPlayer.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="container">
+                <p>North Music v0.1 • Released 2026 • Designed for nocturnal audiophiles.</p>
+                <p style="margin-top: 8px;">
+                    <a href="#top">Back to top ↑</a>
+                </p>
+            </div>
+        </footer>
+    </div>
+
+</body>
+</html>

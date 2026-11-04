@@ -1,5 +1,13 @@
 package com.nishant.northmusic.ui.screens
 
+import android.app.Activity
+import android.content.Intent
+import android.os.Build
+import android.provider.MediaStore
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -27,16 +35,20 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.ClearAll
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.HighQuality
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.MoreVert
@@ -49,6 +61,7 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -90,6 +103,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -101,6 +115,12 @@ import com.nishant.northmusic.data.model.RepeatMode
 import com.nishant.northmusic.data.model.Song
 import com.nishant.northmusic.ui.components.AsyncSongArtwork
 import com.nishant.northmusic.ui.components.SongItem
+import com.nishant.northmusic.ui.dialogs.AddToPlaylistDialog
+import com.nishant.northmusic.ui.dialogs.GoToDialog
+import com.nishant.northmusic.ui.dialogs.SleepTimerBottomSheet
+import com.nishant.northmusic.ui.dialogs.SongDetailsDialog
+import com.nishant.northmusic.ui.dialogs.TagEditorDialog
+import com.nishant.northmusic.ui.dialogs.WebSearchDialog
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.theme.SquircleLargeArtworkShape
 import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
@@ -108,6 +128,7 @@ import com.nishant.northmusic.util.FeatureFlags
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,11 +136,16 @@ fun NowPlayingScreen(
     playerViewModel: PlayerViewModel,
     onDismiss: () -> Unit,
     onNavigateToEqualizer: (() -> Unit)? = null,
+    onNavigateToAlbum: ((String) -> Unit)? = null,
+    onNavigateToArtist: ((String) -> Unit)? = null,
+    onNavigateToFolder: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val playerState by playerViewModel.playerState.collectAsState()
     val queue by playerViewModel.queue.collectAsState()
     val lyrics by playerViewModel.lyrics.collectAsState()
+    val sleepTimerState by playerViewModel.sleepTimerState.collectAsState()
     val song = playerState.currentSong ?: return
 
     var sliderPosition by remember(playerState.currentPositionSeconds) {
@@ -130,6 +156,24 @@ fun NowPlayingScreen(
     var selectedSheetTab by remember { mutableIntStateOf(0) } // 0 = Lyrics, 1 = Up Next
     var showMoreMenu by remember { mutableStateOf(false) }
     var isQueueItemDragging by remember { mutableStateOf(false) }
+
+    // Dialog states
+    var showSleepTimerSheet by remember { mutableStateOf(false) }
+    var showAddToPlaylist by remember { mutableStateOf(false) }
+    var showGoToDialog by remember { mutableStateOf(false) }
+    var showTagEditor by remember { mutableStateOf(false) }
+    var showWebSearch by remember { mutableStateOf(false) }
+    var showDetails by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    val deleteLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            Toast.makeText(context, "Deleted from device", Toast.LENGTH_SHORT).show()
+            playerViewModel.skipToNext()
+        }
+    }
 
     // Fixed page layout: No verticalScroll on outer column so the player is always stable
     Column(
@@ -230,6 +274,19 @@ fun NowPlayingScreen(
                         expanded = showMoreMenu,
                         onDismissRequest = { showMoreMenu = false }
                     ) {
+                        // 1. Sleep timer
+                        DropdownMenuItem(
+                            text = { Text("Sleep timer") },
+                            onClick = {
+                                showMoreMenu = false
+                                showSleepTimerSheet = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Bedtime, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        )
+
+                        // 2. Equalizer
                         if (FeatureFlags.SHOW_EQUALIZER && onNavigateToEqualizer != null) {
                             DropdownMenuItem(
                                 text = { Text("Equalizer") },
@@ -242,13 +299,97 @@ fun NowPlayingScreen(
                                 }
                             )
                         }
+
+                        // 3. Add to playlist
+                        DropdownMenuItem(
+                            text = { Text("Add to playlist") },
+                            onClick = {
+                                showMoreMenu = false
+                                showAddToPlaylist = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        )
+
+                        // 4. Go to (Album, Artist, Folder)
+                        DropdownMenuItem(
+                            text = { Text("Go to") },
+                            onClick = {
+                                showMoreMenu = false
+                                showGoToDialog = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.AutoMirrored.Rounded.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        )
+
+                        // 5. Tag editor
+                        if (FeatureFlags.SHOW_TAG_EDITOR) {
+                            DropdownMenuItem(
+                                text = { Text("Tag editor") },
+                                onClick = {
+                                    showMoreMenu = false
+                                    showTagEditor = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Rounded.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            )
+                        }
+
+                        // 6. Web search
+                        DropdownMenuItem(
+                            text = { Text("Web search") },
+                            onClick = {
+                                showMoreMenu = false
+                                showWebSearch = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        )
+
+                        // 7. Share
                         DropdownMenuItem(
                             text = { Text("Share") },
                             onClick = {
                                 showMoreMenu = false
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "audio/*"
+                                    putExtra(Intent.EXTRA_STREAM, song.contentUri)
+                                    putExtra(Intent.EXTRA_SUBJECT, song.title)
+                                    putExtra(Intent.EXTRA_TEXT, "Listening to ${song.title} by ${song.artist}")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Share \"${song.title}\""))
                             },
                             leadingIcon = {
                                 Icon(Icons.Rounded.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        )
+
+                        // 8. Details
+                        DropdownMenuItem(
+                            text = { Text("Details") },
+                            onClick = {
+                                showMoreMenu = false
+                                showDetails = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        )
+
+                        // 9. Delete from device
+                        DropdownMenuItem(
+                            text = { Text("Delete from device") },
+                            onClick = {
+                                showMoreMenu = false
+                                showDeleteConfirm = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                             }
                         )
                     }
@@ -292,28 +433,63 @@ fun NowPlayingScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                // High Quality Audio Badge
-                Surface(
-                    shape = PillShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                // Badges row: High Quality Audio Badge + Sleep Timer countdown chip
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(bottom = 6.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    Surface(
+                        shape = PillShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.HighQuality,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = "High quality",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.HighQuality,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "High quality",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    // Sleep Timer countdown chip on player
+                    if (sleepTimerState.isActive) {
+                        Surface(
+                            shape = PillShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier
+                                .clip(PillShape)
+                                .clickable { showSleepTimerSheet = true }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Bedtime,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = sleepTimerState.formattedRemaining,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -347,7 +523,7 @@ fun NowPlayingScreen(
                     )
                 }
                 IconButton(
-                    onClick = { /* TODO: Add to playlist */ },
+                    onClick = { showAddToPlaylist = true },
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
@@ -659,6 +835,106 @@ fun NowPlayingScreen(
             }
         }
     }
+
+    // Dialogs
+    if (showSleepTimerSheet) {
+        SleepTimerBottomSheet(
+            playerViewModel = playerViewModel,
+            onDismiss = { showSleepTimerSheet = false }
+        )
+    }
+
+    if (showAddToPlaylist) {
+        AddToPlaylistDialog(
+            song = song,
+            onDismiss = { showAddToPlaylist = false }
+        )
+    }
+
+    if (showGoToDialog) {
+        GoToDialog(
+            song = song,
+            onGoToAlbum = { album ->
+                onNavigateToAlbum?.invoke(album) ?: onDismiss()
+            },
+            onGoToArtist = { artist ->
+                onNavigateToArtist?.invoke(artist) ?: onDismiss()
+            },
+            onGoToFolder = { folder ->
+                onNavigateToFolder?.invoke(folder) ?: onDismiss()
+            },
+            onDismiss = { showGoToDialog = false }
+        )
+    }
+
+    if (showTagEditor) {
+        TagEditorDialog(
+            song = song,
+            onDismiss = { showTagEditor = false }
+        )
+    }
+
+    if (showWebSearch) {
+        WebSearchDialog(
+            song = song,
+            onDismiss = { showWebSearch = false }
+        )
+    }
+
+    if (showDetails) {
+        SongDetailsDialog(
+            song = song,
+            onDismiss = { showDetails = false }
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete from device") },
+            text = { Text("Are you sure you want to permanently delete \"${song.title}\" from your device?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            try {
+                                val deleteRequest = MediaStore.createDeleteRequest(
+                                    context.contentResolver,
+                                    listOf(song.contentUri)
+                                )
+                                deleteLauncher.launch(
+                                    IntentSenderRequest.Builder(deleteRequest.intentSender).build()
+                                )
+                            } catch (_: Exception) {
+                                try {
+                                    context.contentResolver.delete(song.contentUri, null, null)
+                                    File(song.filePath).delete()
+                                    Toast.makeText(context, "Deleted", Toast.LENGTH_SHORT).show()
+                                    playerViewModel.skipToNext()
+                                } catch (_: Exception) {}
+                            }
+                        } else {
+                            try {
+                                context.contentResolver.delete(song.contentUri, null, null)
+                                File(song.filePath).delete()
+                                Toast.makeText(context, "Deleted", Toast.LENGTH_SHORT).show()
+                                playerViewModel.skipToNext()
+                            } catch (_: Exception) {}
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 private fun formatDuration(seconds: Int): String {
@@ -808,7 +1084,7 @@ fun UpNextTabContent(
     currentSong: Song,
     queue: List<Song>,
     onSongClick: (Song) -> Unit,
-    onRemoveFromQueue: (String) -> Unit,
+    onRemoveFromQueue: (Int) -> Unit,
     onMoveQueueItem: (from: Int, to: Int) -> Unit,
     onClearQueue: () -> Unit,
     onDragStateChanged: (Boolean) -> Unit = {},
@@ -885,6 +1161,7 @@ fun UpNextTabContent(
                     items = currentQueueList,
                     key = { it.id }
                 ) { song ->
+                    val index = currentQueueList.indexOf(song)
                     ReorderableItem(
                         state = reorderableLazyListState,
                         key = song.id
@@ -908,7 +1185,7 @@ fun UpNextTabContent(
                                     song = song,
                                     isPlaying = song.id == currentSong.id,
                                     onClick = { onSongClick(song) },
-                                    onRemoveFromQueue = { onRemoveFromQueue(song.id) }
+                                    onOptionsClick = { onRemoveFromQueue(index) }
                                 )
                             }
 

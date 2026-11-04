@@ -59,6 +59,7 @@ import com.nishant.northmusic.ui.screens.settings.AboutSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.AdvancedSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.AppearanceSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.DownloadsSettingsScreen
+import com.nishant.northmusic.ui.screens.settings.FixMetadataScreen
 import com.nishant.northmusic.ui.screens.settings.LibrarySettingsScreen
 import com.nishant.northmusic.ui.screens.settings.LyricsSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.NetworkSettingsScreen
@@ -132,6 +133,7 @@ fun MainScaffold(
             currentRoute == Screen.SettingsNetwork.route ||
             currentRoute == Screen.SettingsAdvanced.route ||
             currentRoute == Screen.SettingsAbout.route ||
+            currentRoute == Screen.FixMetadata.route ||
             currentRoute == Screen.TopTracks.route ||
             currentRoute == Screen.LastAdded.route ||
             currentRoute == Screen.History.route ||
@@ -347,6 +349,12 @@ fun MainScaffold(
             composable(Screen.SettingsLibrary.route) {
                 LibrarySettingsScreen(
                     settingsViewModel = settingsViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToFixMetadata = { navController.navigate(Screen.FixMetadata.route) }
+                )
+            }
+            composable(Screen.FixMetadata.route) {
+                FixMetadataScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
@@ -380,7 +388,43 @@ fun MainScaffold(
                 NowPlayingScreen(
                     playerViewModel = playerViewModel,
                     onDismiss = { navController.popBackStack() },
-                    onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) }
+                    onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
+                    onNavigateToAlbum = { albumName ->
+                        navController.popBackStack()
+                        navController.navigate(Screen.Library.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.ALBUMS)
+                        libraryViewModel.updateSearchQuery(albumName)
+                    },
+                    onNavigateToArtist = { artistName ->
+                        navController.popBackStack()
+                        navController.navigate(Screen.Library.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.ARTISTS)
+                        libraryViewModel.updateSearchQuery(artistName)
+                    },
+                    onNavigateToFolder = { folderName ->
+                        navController.popBackStack()
+                        navController.navigate(Screen.Library.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.FOLDERS)
+                        libraryViewModel.updateSearchQuery(folderName)
+                    }
                 )
             }
             composable(Screen.Equalizer.route) {

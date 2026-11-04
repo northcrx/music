@@ -111,6 +111,25 @@ import com.nishant.northmusic.data.repository.normalizeText
 import com.nishant.northmusic.data.repository.splitArtistNames
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import com.nishant.northmusic.ui.components.AsyncSongArtwork
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.Refresh
+import com.nishant.northmusic.data.network.ArtistPhotoDownloader
+import java.io.FileOutputStream
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import com.nishant.northmusic.data.local.LocalStatsDatabase
+import com.nishant.northmusic.ui.components.ArtistAvatar
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.CallMerge
+import androidx.compose.material.icons.rounded.DriveFileRenameOutline
+import androidx.compose.material.icons.rounded.PlayArrow
+import com.nishant.northmusic.ui.dialogs.BatchTagEditorDialog
+import com.nishant.northmusic.ui.dialogs.MergeAlbumsDialog
+import com.nishant.northmusic.ui.dialogs.RenameArtistDialog
+import com.nishant.northmusic.ui.dialogs.TagEditorDialog
 import com.nishant.northmusic.ui.components.SongItem
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.LibraryViewModel
@@ -170,6 +189,17 @@ fun LibraryScreen(
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var selectedSort by remember { mutableStateOf("A-Z") }
 
+    var songToEditTags by remember { mutableStateOf<Song?>(null) }
+    var albumToMerge by remember { mutableStateOf<Album?>(null) }
+    var albumToBatchEdit by remember { mutableStateOf<Album?>(null) }
+    var artistToRename by remember { mutableStateOf<Artist?>(null) }
+    var artistToBatchEdit by remember { mutableStateOf<Artist?>(null) }
+
+    var selectedAlbumDetail by remember { mutableStateOf<Album?>(null) }
+    var selectedArtistDetail by remember { mutableStateOf<Artist?>(null) }
+    var selectedPlaylistDetail by remember { mutableStateOf<Playlist?>(null) }
+    var selectedFolderDetail by remember { mutableStateOf<FolderItem?>(null) }
+
     val sortedSongs = remember(uiState.songs, selectedSort) {
         when (selectedSort) {
             "Recently added" -> uiState.songs.reversed()
@@ -227,11 +257,100 @@ fun LibraryScreen(
         derivedStateOfLetter(sortedSongs, listState)
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
+    if (selectedAlbumDetail != null) {
+        val album = selectedAlbumDetail!!
+        val albumSongs = remember(album, uiState.songs) {
+            uiState.songs.filter {
+                it.albumId == album.albumId || normalizeText(it.album) == normalizeText(album.title)
+            }
+        }
+        LibraryDetailSubScreen(
+            title = album.title,
+            subtitle = if (album.year > 0) "${album.artist} • ${album.year}" else album.artist,
+            artworkUri = album.albumArtUri,
+            colorSeed = album.colorSeed,
+            songs = albumSongs,
+            playerViewModel = playerViewModel,
+            onBack = { selectedAlbumDetail = null },
+            onOptionsClick = { albumToBatchEdit = album },
+            onEditSongTags = { songToEditTags = it },
+            modifier = modifier
+        )
+    } else if (selectedArtistDetail != null) {
+        val artist = selectedArtistDetail!!
+        val settings = SettingsRepository.current
+        val artistSongs = remember(artist, uiState.songs) {
+            uiState.songs.filter { s ->
+                val split = splitArtistNames(s.artist, settings.splitArtistsOnAmpersand, settings.dontSplitArtistNames)
+                split.any { it.equals(artist.name, ignoreCase = true) }
+            }
+        }
+        val firstSongArtwork = artistSongs.firstOrNull { it.albumArtUri != null }?.albumArtUri
+        LibraryDetailSubScreen(
+            title = artist.name,
+            subtitle = "${artist.albumCount} albums • ${artist.songCount} songs",
+            artworkUri = artist.savedPhotoUri?.let { android.net.Uri.parse(it) } ?: artist.firstAlbumArtUri ?: firstSongArtwork,
+            colorSeed = artist.colorSeed,
+            songs = artistSongs,
+            playerViewModel = playerViewModel,
+            onBack = { selectedArtistDetail = null },
+            onOptionsClick = { artistToBatchEdit = artist },
+            onEditSongTags = { songToEditTags = it },
+            modifier = modifier
+        )
+    } else if (selectedPlaylistDetail != null) {
+        val playlist = selectedPlaylistDetail!!
+        var playlistSongIds by remember(playlist.id) { mutableStateOf<List<String>>(emptyList()) }
+        LaunchedEffect(playlist.id) {
+            if (playlist.id != "fav") {
+                playlistSongIds = LocalStatsDatabase.getInstance(context).getPlaylistSongIds(playlist.id)
+            }
+        }
+        val playlistSongs = remember(playlist.id, playlistSongIds, uiState.songs) {
+            if (playlist.id == "fav") {
+                uiState.songs.filter { it.isFavorite }
+            } else {
+                val map = uiState.songs.associateBy { it.id }
+                playlistSongIds.mapNotNull { map[it] }
+            }
+        }
+        val firstSongArtwork = playlistSongs.firstOrNull { it.albumArtUri != null }?.albumArtUri
+        LibraryDetailSubScreen(
+            title = playlist.title,
+            subtitle = "${playlistSongs.size} songs",
+            artworkUri = firstSongArtwork,
+            colorSeed = playlist.colorSeed,
+            songs = playlistSongs,
+            playerViewModel = playerViewModel,
+            onBack = { selectedPlaylistDetail = null },
+            onEditSongTags = { songToEditTags = it },
+            modifier = modifier
+        )
+    } else if (selectedFolderDetail != null) {
+        val folder = selectedFolderDetail!!
+        val folderSongs = remember(folder, uiState.songs) {
+            uiState.songs.filter {
+                it.relativeFolder == folder.path || it.filePath.contains(folder.name)
+            }
+        }
+        val firstSongArtwork = folderSongs.firstOrNull { it.albumArtUri != null }?.albumArtUri
+        LibraryDetailSubScreen(
+            title = folder.name,
+            subtitle = folder.path,
+            artworkUri = firstSongArtwork,
+            colorSeed = (folder.name.hashCode().toLong() and 0xFFFFFFL) or 0xFF000000L,
+            songs = folderSongs,
+            playerViewModel = playerViewModel,
+            onBack = { selectedFolderDetail = null },
+            onEditSongTags = { songToEditTags = it },
+            modifier = modifier
+        )
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
         // Sticky Top App Bar
         TopAppBar(
             windowInsets = WindowInsets(0.dp),
@@ -396,7 +515,8 @@ fun LibraryScreen(
                                     song = song,
                                     isPlaying = isPlaying,
                                     onClick = { playerViewModel.playSong(song, sortedSongs, source = "Songs") },
-                                    onOptionsClick = { /* TODO: Song context menu */ }
+                                    onOptionsClick = { /* Song context menu */ },
+                                    onEditTags = { songToEditTags = song }
                                 )
                             }
                         }
@@ -548,13 +668,10 @@ fun LibraryScreen(
                 AlbumsTabContent(
                     albums = uiState.albums,
                     onAlbumClick = { album ->
-                        val matchingSongs = uiState.songs.filter {
-                            it.albumId == album.albumId || normalizeText(it.album) == normalizeText(album.title)
-                        }
-                        matchingSongs.firstOrNull()?.let {
-                            playerViewModel.playSong(it, matchingSongs, source = "Album ${album.title}")
-                        }
-                    }
+                        selectedAlbumDetail = album
+                    },
+                    onMergeAlbum = { albumToMerge = it },
+                    onBatchEditAlbum = { albumToBatchEdit = it }
                 )
             }
 
@@ -562,15 +679,10 @@ fun LibraryScreen(
                 ArtistsTabContent(
                     artists = uiState.artists,
                     onArtistClick = { artist ->
-                        val settings = SettingsRepository.current
-                        val matchingSongs = uiState.songs.filter { song ->
-                            val split = splitArtistNames(song.artist, settings.splitArtistsOnAmpersand, settings.dontSplitArtistNames)
-                            split.any { it.equals(artist.name, ignoreCase = true) }
-                        }
-                        matchingSongs.firstOrNull()?.let {
-                            playerViewModel.playSong(it, matchingSongs, source = "Artist ${artist.name}")
-                        }
-                    }
+                        selectedArtistDetail = artist
+                    },
+                    onRenameArtist = { artistToRename = it },
+                    onBatchEditArtist = { artistToBatchEdit = it }
                 )
             }
 
@@ -578,9 +690,7 @@ fun LibraryScreen(
                 PlaylistsTabContent(
                     playlists = uiState.playlists,
                     onPlaylistClick = { playlist ->
-                        uiState.songs.firstOrNull()?.let {
-                            playerViewModel.playSong(it, uiState.songs, source = "Playlist ${playlist.title}")
-                        }
+                        selectedPlaylistDetail = playlist
                     }
                 )
             }
@@ -589,12 +699,7 @@ fun LibraryScreen(
                 FoldersTabContent(
                     folders = uiState.folders,
                     onFolderClick = { folder ->
-                        val matchingSongs = uiState.songs.filter {
-                            it.relativeFolder == folder.path || it.filePath.contains(folder.name)
-                        }
-                        matchingSongs.firstOrNull()?.let {
-                            playerViewModel.playSong(it, matchingSongs, source = "Folder ${folder.name}")
-                        }
+                        selectedFolderDetail = folder
                     }
                 )
             }
@@ -602,16 +707,84 @@ fun LibraryScreen(
     }
 }
 
+    if (songToEditTags != null) {
+        TagEditorDialog(
+            song = songToEditTags!!,
+            onDismiss = {
+                songToEditTags = null
+                libraryViewModel.scanMusic()
+            }
+        )
+    }
+
+    if (albumToMerge != null) {
+        MergeAlbumsDialog(
+            sourceAlbum = albumToMerge!!,
+            availableAlbums = uiState.albums,
+            songs = uiState.songs,
+            onDismiss = {
+                albumToMerge = null
+                libraryViewModel.scanMusic()
+            }
+        )
+    }
+
+    if (albumToBatchEdit != null) {
+        val albumSongs = uiState.songs.filter {
+            it.albumId == albumToBatchEdit!!.albumId || normalizeText(it.album) == normalizeText(albumToBatchEdit!!.title)
+        }
+        BatchTagEditorDialog(
+            songs = albumSongs,
+            onDismiss = {
+                albumToBatchEdit = null
+                libraryViewModel.scanMusic()
+            }
+        )
+    }
+
+    if (artistToRename != null) {
+        RenameArtistDialog(
+            artist = artistToRename!!,
+            songs = uiState.songs,
+            onDismiss = {
+                artistToRename = null
+                libraryViewModel.scanMusic()
+            }
+        )
+    }
+
+    if (artistToBatchEdit != null) {
+        val settings = SettingsRepository.current
+        val artistSongs = uiState.songs.filter { s ->
+            val split = splitArtistNames(s.artist, settings.splitArtistsOnAmpersand, settings.dontSplitArtistNames)
+            split.any { it.equals(artistToBatchEdit!!.name, ignoreCase = true) }
+        }
+        BatchTagEditorDialog(
+            songs = artistSongs,
+            onDismiss = {
+                artistToBatchEdit = null
+                libraryViewModel.scanMusic()
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlbumsTabContent(
     albums: List<Album>,
     onAlbumClick: (Album) -> Unit,
+    onMergeAlbum: (Album) -> Unit,
+    onBatchEditAlbum: (Album) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (albums.isEmpty()) {
         EmptyCategoryNotice(message = "No albums found in your library")
         return
     }
+
+    var selectedAlbumForMenu by remember { mutableStateOf<Album?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -621,48 +794,106 @@ private fun AlbumsTabContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(albums, key = { it.id }) { album ->
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable { onAlbumClick(album) }
+                    .combinedClickable(
+                        onClick = { onAlbumClick(album) },
+                        onLongClick = {
+                            selectedAlbumForMenu = album
+                            showMenu = true
+                        }
+                    )
             ) {
-                AsyncSongArtwork(
-                    albumArtUri = album.albumArtUri,
-                    colorSeed = album.colorSeed,
-                    size = 150.dp,
-                    shape = RoundedCornerShape(18.dp),
-                    iconSize = 44.dp,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    AsyncSongArtwork(
+                        albumArtUri = album.albumArtUri,
+                        colorSeed = album.colorSeed,
+                        size = 150.dp,
+                        shape = RoundedCornerShape(18.dp),
+                        iconSize = 44.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = album.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                val albumSubtitle = if (album.year > 0) "${album.artist} • ${album.year}" else album.artist
-                Text(
-                    text = albumSubtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                    Text(
+                        text = album.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    val albumSubtitle = if (album.year > 0) "${album.artist} • ${album.year}" else album.artist
+                    Text(
+                        text = albumSubtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                if (showMenu && selectedAlbumForMenu?.id == album.id) {
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = {
+                            showMenu = false
+                            selectedAlbumForMenu = null
+                        }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Play album") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                showMenu = false
+                                val target = selectedAlbumForMenu
+                                selectedAlbumForMenu = null
+                                if (target != null) onAlbumClick(target)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Merge albums...") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.CallMerge, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                showMenu = false
+                                val target = selectedAlbumForMenu
+                                selectedAlbumForMenu = null
+                                if (target != null) onMergeAlbum(target)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Edit album tags") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                showMenu = false
+                                val target = selectedAlbumForMenu
+                                selectedAlbumForMenu = null
+                                if (target != null) onBatchEditAlbum(target)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ArtistsTabContent(
     artists: List<Artist>,
     onArtistClick: (Artist) -> Unit,
+    onRenameArtist: (Artist) -> Unit = {},
+    onBatchEditArtist: (Artist) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (artists.isEmpty()) {
@@ -670,60 +901,161 @@ private fun ArtistsTabContent(
         return
     }
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var selectedArtistForMenu by remember { mutableStateOf<Artist?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+
+    val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val targetArtist = selectedArtistForMenu
+        if (uri != null && targetArtist != null) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val dir = File(context.filesDir, "artist_images").apply { if (!exists()) mkdirs() }
+                    val fileHash = ArtistPhotoDownloader.getHash(targetArtist.name)
+                    val destFile = File(dir, "$fileHash.jpg")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(destFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    LocalStatsDatabase.getInstance(context).saveArtistImage(targetArtist.name, destFile.absolutePath, "user")
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = BottomListScrollPadding)
     ) {
         items(artists, key = { it.id }) { artist ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onArtistClick(artist) }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Circular artist avatar
-                Box(
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
                     modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(Color(artist.colorSeed)),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = { onArtistClick(artist) },
+                            onLongClick = {
+                                selectedArtistForMenu = artist
+                                showMenu = true
+                            }
+                        )
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = artist.name.take(1),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                    // Circular artist avatar with fallback chain: saved -> collage/album art -> letter
+                    ArtistAvatar(
+                        artist = artist,
+                        size = 52.dp
+                    )
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = artist.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        val trackText = if (artist.songCount == 1) "1 track" else "${artist.songCount} tracks"
+                        val albumText = if (artist.albumCount == 1) "1 album" else "${artist.albumCount} albums"
+                        Text(
+                            text = "$trackText • $albumText",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(16.dp)
                     )
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = artist.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    val trackText = if (artist.songCount == 1) "1 track" else "${artist.songCount} tracks"
-                    val albumText = if (artist.albumCount == 1) "1 album" else "${artist.albumCount} albums"
-                    Text(
-                        text = "$trackText • $albumText",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (showMenu && selectedArtistForMenu?.id == artist.id) {
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = {
+                            showMenu = false
+                            selectedArtistForMenu = null
+                        }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Change photo") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.PhotoCamera, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                showMenu = false
+                                galleryPicker.launch("image/*")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Remove photo") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                val target = selectedArtistForMenu
+                                showMenu = false
+                                selectedArtistForMenu = null
+                                if (target != null) {
+                                    scope.launch(Dispatchers.IO) {
+                                        LocalStatsDatabase.getInstance(context).removeArtistImage(target.name)
+                                    }
+                                }
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Rename artist...") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.DriveFileRenameOutline, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                val target = selectedArtistForMenu
+                                showMenu = false
+                                selectedArtistForMenu = null
+                                if (target != null) onRenameArtist(target)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Edit all tracks") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                val target = selectedArtistForMenu
+                                showMenu = false
+                                selectedArtistForMenu = null
+                                if (target != null) onBatchEditArtist(target)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Search again") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                val target = selectedArtistForMenu
+                                showMenu = false
+                                selectedArtistForMenu = null
+                                if (target != null) {
+                                    scope.launch(Dispatchers.IO) {
+                                        ArtistPhotoDownloader.fetchAndSaveArtistPhoto(context, target.name, forceRefresh = true)
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(16.dp)
-                )
             }
         }
     }

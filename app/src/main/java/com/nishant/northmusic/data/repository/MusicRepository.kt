@@ -21,6 +21,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -135,6 +137,15 @@ class MusicRepository private constructor(private val context: Context) {
             }
         }
 
+        // Listen for image or tag changes in database
+        scope.launch {
+            combine(statsDb.artistImagesFlow, statsDb.albumImagesFlow, statsDb.tagOverridesFlow) { _, _, _ -> }
+                .drop(1)
+                .collect {
+                    rescan()
+                }
+        }
+
         // Initial scan
         rescan()
     }
@@ -180,6 +191,7 @@ class MusicRepository private constructor(private val context: Context) {
         val records = mutableListOf<TrackRecord>()
         val favorites = statsDb.favoritesFlow.value
         val settings = SettingsRepository.current
+        val tagOverrides = statsDb.getAllSongTagOverrides()
         val minDurationMs = if (settings.ignoreShortTracks) settings.minSongDurationSeconds * 1000L else 0L
         val blacklist = settings.foldersBlacklist.map { it.trim().lowercase() }.filter { it.isNotBlank() }
 
@@ -268,7 +280,7 @@ class MusicRepository private constructor(private val context: Context) {
                     val genre = if (genreCol >= 0) c.getString(genreCol) ?: "Pop" else "Pop"
 
                     val rawAlbumArtist = if (albumArtistCol >= 0) c.getString(albumArtistCol) else null
-                    val effectiveAlbumArtist = if (!rawAlbumArtist.isNullOrBlank() && rawAlbumArtist != "<unknown>") rawAlbumArtist.trim() else null
+                    val effectiveAlbumArtistFromMedia = if (!rawAlbumArtist.isNullOrBlank() && rawAlbumArtist != "<unknown>") rawAlbumArtist.trim() else null
 
                     // Check blacklist
                     val lowerPath = filePath.lowercase()
@@ -276,9 +288,16 @@ class MusicRepository private constructor(private val context: Context) {
                         continue
                     }
 
-                    val title = if (!rawTitle.isNullOrBlank() && rawTitle != "<unknown>") rawTitle else displayName.substringBeforeLast('.')
-                    val artist = if (!rawArtist.isNullOrBlank() && rawArtist != "<unknown>") rawArtist else "Unknown Artist"
-                    val album = if (!rawAlbum.isNullOrBlank() && rawAlbum != "<unknown>") rawAlbum else "Unknown Album"
+                    // Check overrides
+                    val override = tagOverrides[id.toString()]
+                    val title = override?.title ?: if (!rawTitle.isNullOrBlank() && rawTitle != "<unknown>") rawTitle else displayName.substringBeforeLast('.')
+                    val artist = override?.artist ?: if (!rawArtist.isNullOrBlank() && rawArtist != "<unknown>") rawArtist else "Unknown Artist"
+                    val album = override?.album ?: if (!rawAlbum.isNullOrBlank() && rawAlbum != "<unknown>") rawAlbum else "Unknown Album"
+                    val effectiveAlbumArtist = override?.albumArtist ?: effectiveAlbumArtistFromMedia
+                    val finalGenre = override?.genre ?: genre
+                    val finalYear = override?.year ?: year
+                    val finalTrack = override?.track ?: track
+                    val customArtUri = override?.artworkPath?.let { Uri.parse(it) }
 
                     val folderName = if (relativePath.isNotBlank()) {
                         relativePath.trim('/').substringAfterLast('/')
@@ -300,13 +319,14 @@ class MusicRepository private constructor(private val context: Context) {
                         colorSeed = colorSeed,
                         isFavorite = favorites.contains(id.toString()),
                         isHighQuality = true,
-                        genre = genre,
+                        genre = finalGenre,
                         filePath = filePath,
                         relativeFolder = folderName,
                         dateAdded = dateAdded,
-                        year = year,
-                        trackNumber = track,
-                        sizeBytes = size
+                        year = finalYear,
+                        trackNumber = finalTrack,
+                        sizeBytes = size,
+                        customArtUri = customArtUri
                     )
 
                     songList.add(song)
@@ -345,8 +365,12 @@ class MusicRepository private constructor(private val context: Context) {
             } else {
                 groupRecords.mapNotNull { it.albumArtist }.firstOrNull { it.isNotBlank() } ?: firstRecord.primaryArtist
             }
-            // Merge artwork: use first available artwork among grouped tracks
-            val firstArtUri = songsInAlbum.firstOrNull { it.albumId > 0L }?.albumArtUri ?: first.albumArtUri
+            // Merge artwork: check custom album art in statsDb first, then first available artwork among grouped tracks
+            val savedAlbumArt = statsDb.getAlbumImage(groupKey) ?: statsDb.getAlbumImage(normTitle + "|" + normalizeText(albumArtist))
+            val firstArtUri = savedAlbumArt?.let { Uri.parse(it) }
+                ?: songsInAlbum.firstOrNull { it.customArtUri != null }?.customArtUri
+                ?: songsInAlbum.firstOrNull { it.albumId > 0L }?.albumArtUri
+                ?: first.albumArtUri
             val maxYear = songsInAlbum.map { it.year }.firstOrNull { it > 0 } ?: first.year
 
             Album(
@@ -378,12 +402,16 @@ class MusicRepository private constructor(private val context: Context) {
         val artistList = artistMap.map { (artistName, songsByArtist) ->
             val first = songsByArtist.first()
             val distinctAlbumCount = songsByArtist.map { normalizeText(it.album) }.distinct().size
+            val distinctAlbumArts = songsByArtist.mapNotNull { it.albumArtUri }.distinct()
+            val savedPhoto = statsDb.getArtistImage(artistName)
             Artist(
                 id = artistName.hashCode().toString(),
                 name = artistName,
                 songCount = songsByArtist.size,
                 albumCount = distinctAlbumCount,
-                colorSeed = first.colorSeed
+                colorSeed = first.colorSeed,
+                savedPhotoUri = savedPhoto,
+                albumArtUris = distinctAlbumArts
             )
         }.sortedBy { it.name.lowercase() }
 

@@ -21,7 +21,8 @@ data class Song(
     val sizeBytes: Long = 0L,
     val isHighQuality: Boolean = false,
     val genre: String = "",
-    val trackNumber: Int = 0
+    val trackNumber: Int = 0,
+    val customArtUri: Uri? = null
 ) {
     val contentUri: Uri
         get() = ContentUris.withAppendedId(
@@ -29,11 +30,13 @@ data class Song(
             id.toLongOrNull() ?: 0L
         )
 
-    val albumArtUri: Uri
-        get() = ContentUris.withAppendedId(
-            Uri.parse("content://media/external/audio/albumart"),
-            albumId
-        )
+    val albumArtUri: Uri?
+        get() = customArtUri ?: if (albumId > 0L) {
+            ContentUris.withAppendedId(
+                Uri.parse("content://media/external/audio/albumart"),
+                albumId
+            )
+        } else null
 
     val formattedDuration: String
         get() {
@@ -70,11 +73,13 @@ data class Album(
     val albumId: Long = id.toLongOrNull() ?: 0L,
     val customArtUri: Uri? = null
 ) {
-    val albumArtUri: Uri
-        get() = customArtUri ?: ContentUris.withAppendedId(
-            Uri.parse("content://media/external/audio/albumart"),
-            albumId
-        )
+    val albumArtUri: Uri?
+        get() = customArtUri ?: if (albumId > 0L) {
+            ContentUris.withAppendedId(
+                Uri.parse("content://media/external/audio/albumart"),
+                albumId
+            )
+        } else null
 }
 
 data class Artist(
@@ -82,7 +87,28 @@ data class Artist(
     val name: String,
     val songCount: Int,
     val albumCount: Int,
-    val colorSeed: Long = 0xFF2DD4BF
+    val colorSeed: Long = 0xFF2DD4BF,
+    val savedPhotoUri: String? = null,
+    val albumArtUris: List<Uri> = emptyList()
+) {
+    val firstAlbumArtUri: Uri?
+        get() = albumArtUris.firstOrNull()
+}
+
+data class SongTagOverride(
+    val songId: String,
+    val title: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    val albumArtist: String? = null,
+    val composer: String? = null,
+    val genre: String? = null,
+    val year: Int? = null,
+    val track: Int? = null,
+    val disc: Int? = null,
+    val lyrics: String? = null,
+    val comment: String? = null,
+    val artworkPath: String? = null
 )
 
 data class Playlist(
@@ -169,13 +195,32 @@ enum class ThemeMode(val label: String) {
 }
 
 enum class AccentColor(val label: String, val hexColor: Long) {
-    TEAL("Teal", 0xFF0D9488),
     BLUE("Blue", 0xFF2563EB),
+    TEAL("Teal", 0xFF0D9488),
     GREEN("Green", 0xFF16A34A),
     ORANGE("Orange", 0xFFEA580C),
     ROSE("Rose", 0xFFE11D48),
     RED("Red", 0xFFDC2626),
     PURPLE("Purple", 0xFF7C3AED)
+}
+
+enum class AppIcon(
+    val id: String,
+    val title: String,
+    val aliasName: String,
+    val primaryColorHex: Long,
+    val description: String
+) {
+    BLUE("blue", "Default Blue", "MainActivityDefault", 0xFF2563EB, "Matches app UI blue accent"),
+    TEAL("teal", "Nordic Teal", "MainActivityTeal", 0xFF14B8A6, "Classic North teal"),
+    MIDNIGHT("midnight", "Midnight", "MainActivityMidnight", 0xFF0F172A, "Dark slate & blue"),
+    PURPLE("purple", "Purple", "MainActivityPurple", 0xFF7C3AED, "Electric purple"),
+    ROSE("rose", "Rose", "MainActivityRose", 0xFFE11D48, "Sunset rose"),
+    BLACK("black", "Onyx Black", "MainActivityBlack", 0xFF000000, "Pure AMOLED dark");
+
+    companion object {
+        fun fromId(id: String?): AppIcon = entries.find { it.id == id } ?: BLUE
+    }
 }
 
 enum class AudioOutputDevice(val label: String) {
@@ -263,7 +308,8 @@ data class SettingsState(
     // 2. Appearance
     val dynamicColor: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.DARK,
-    val accentColor: AccentColor = AccentColor.TEAL,
+    val accentColor: AccentColor = AccentColor.BLUE,
+    val appIcon: AppIcon = AppIcon.BLUE,
     val largerHeaderImage: Boolean = false,
     val tabTitlesMode: String = "Always", // "Always", "Selected", "Never"
     val scrollingTextForLongTitles: Boolean = true,
@@ -326,6 +372,8 @@ data class SettingsState(
     // 8. Network & Metadata
     val autoDownloadMetadata: Boolean = true,
     val onlineMetadataLookup: Boolean = autoDownloadMetadata,
+    val downloadArtistAndAlbumArt: Boolean = false,
+    val downloadOnlyOnWifi: Boolean = true,
     val preferredLyricsProvider: String = "LRC-Lib",
     val lyricsProviders: String = preferredLyricsProvider,
     val streamingQuality: String = "Auto",

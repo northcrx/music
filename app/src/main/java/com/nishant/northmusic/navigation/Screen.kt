@@ -102,6 +102,10 @@ sealed class Screen(
         route = "settings_about",
         title = "About"
     )
+    data object FixMetadata : Screen(
+        route = "fix_metadata",
+        title = "Fix metadata and artwork"
+    )
     data object SetupWizard : Screen(
         route = "setup_wizard",
         title = "Welcome"

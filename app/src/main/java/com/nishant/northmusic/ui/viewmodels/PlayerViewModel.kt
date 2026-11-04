@@ -2,6 +2,7 @@ package com.nishant.northmusic.ui.viewmodels
 
 import android.app.Application
 import android.content.ComponentName
+import android.net.Uri
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,8 +17,11 @@ import com.nishant.northmusic.data.model.PlayerState
 import com.nishant.northmusic.data.model.RepeatMode
 import com.nishant.northmusic.data.model.Song
 import com.nishant.northmusic.data.repository.MusicRepository
+import com.nishant.northmusic.playback.AudioFxManager
 import com.nishant.northmusic.playback.LyricsHelper
 import com.nishant.northmusic.playback.PlaybackService
+import com.nishant.northmusic.playback.SleepTimerManager
+import com.nishant.northmusic.playback.SleepTimerState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -46,6 +51,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     // Synced Lyrics parsed from companion .lrc or embedded tag
     private val _lyrics = MutableStateFlow<List<LyricLine>>(emptyList())
     val lyrics: StateFlow<List<LyricLine>> = _lyrics.asStateFlow()
+
+    // Sleep Timer State exposed from playback service
+    val sleepTimerState: StateFlow<SleepTimerState> = SleepTimerManager.state
 
     init {
         initMediaController()
@@ -84,6 +92,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                             )
                         }
                         loadLyrics(matchingSong)
+                        AudioFxManager.updateCurrentGenre(matchingSong.genre)
                         viewModelScope.launch {
                             statsDb.recordSongPlay(matchingSong.id)
                         }
@@ -118,40 +127,26 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
-                if (playbackState == Player.STATE_ENDED) {
-                    _playerState.update { it.copy(isPlaying = false, currentPositionSeconds = 0) }
+                if (playbackState == Player.STATE_READY) {
+                    val durationMs = controller.duration
+                    if (durationMs > 0) {
+                        val durationSecs = (durationMs / 1000).toInt()
+                        _playerState.update { current ->
+                            val updatedSong = current.currentSong?.copy(durationSeconds = durationSecs)
+                            current.copy(currentSong = updatedSong)
+                        }
+                    }
                 }
             }
         })
     }
 
-    private fun startProgressTracker() {
-        progressJob?.cancel()
-        progressJob = viewModelScope.launch {
-            while (isActive) {
-                val controller = mediaController
-                if (controller != null && controller.isPlaying) {
-                    val posSec = (controller.currentPosition / 1000L).toInt()
-                    _playerState.update { it.copy(currentPositionSeconds = posSec) }
-                    _playerState.value.currentSong?.id?.let { id ->
-                        statsDb.updateLastPosition(id, posSec)
-                    }
-                }
-                delay(500)
-            }
-        }
-    }
-
-    private fun stopProgressTracker() {
-        progressJob?.cancel()
-        progressJob = null
-    }
-
     private fun restoreLastPlayedSongIfAny() {
         viewModelScope.launch {
-            val last = statsDb.getLastPlayedTrack() ?: return@launch
-            val (songId, posSec) = last
-            val song = musicRepo.songs.value.find { it.id == songId } ?: return@launch
+            val history = statsDb.getRecentlyPlayed(1)
+            val lastId = history.firstOrNull() ?: return@launch
+            val song = musicRepo.songs.value.find { it.id == lastId } ?: return@launch
+            val posSec = statsDb.getLastPosition(song.id)
 
             _playerState.update {
                 it.copy(
@@ -164,6 +159,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             }
             _queue.value = listOf(song)
             loadLyrics(song)
+            AudioFxManager.updateCurrentGenre(song.genre)
 
             val controller = mediaController ?: return@launch
             controller.setMediaItem(song.toMediaItem(), posSec * 1000L)
@@ -186,6 +182,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         loadLyrics(song)
+        AudioFxManager.updateCurrentGenre(song.genre)
 
         viewModelScope.launch {
             statsDb.recordSongPlay(song.id)
@@ -243,104 +240,128 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleShuffle() {
         val controller = mediaController
-        val newShuffle = !(_playerState.value.isShuffle)
+        val newShuffle = !_playerState.value.isShuffle
         controller?.shuffleModeEnabled = newShuffle
         _playerState.update { it.copy(isShuffle = newShuffle) }
     }
 
     fun cycleRepeatMode() {
-        val controller = mediaController
-        val current = _playerState.value.repeatMode
-        val next = when (current) {
+        val controller = mediaController ?: return
+        val nextMode = when (_playerState.value.repeatMode) {
             RepeatMode.OFF -> RepeatMode.ALL
             RepeatMode.ALL -> RepeatMode.ONE
             RepeatMode.ONE -> RepeatMode.OFF
         }
-        val media3Mode = when (next) {
+        val exoMode = when (nextMode) {
             RepeatMode.OFF -> Player.REPEAT_MODE_OFF
             RepeatMode.ALL -> Player.REPEAT_MODE_ALL
             RepeatMode.ONE -> Player.REPEAT_MODE_ONE
         }
-        controller?.repeatMode = media3Mode
-        _playerState.update { it.copy(repeatMode = next) }
+        controller.repeatMode = exoMode
+        _playerState.update { it.copy(repeatMode = nextMode) }
     }
 
-    fun seekTo(seconds: Int) {
-        val controller = mediaController
-        val safeSeconds = seconds.coerceAtLeast(0)
-        _playerState.update { it.copy(currentPositionSeconds = safeSeconds) }
-        controller?.seekTo(safeSeconds * 1000L)
-    }
-
-    fun skipNext() {
+    fun skipToNext() {
         val controller = mediaController
         if (controller != null && controller.hasNextMediaItem()) {
             controller.seekToNextMediaItem()
         } else {
-            val currentQueue = _queue.value
-            val currentSong = _playerState.value.currentSong
-            val currentIndex = currentQueue.indexOfFirst { it.id == currentSong?.id }
-            if (currentIndex != -1 && currentIndex < currentQueue.lastIndex) {
-                playSong(currentQueue[currentIndex + 1], currentQueue)
-            } else if (currentQueue.isNotEmpty()) {
-                playSong(currentQueue.first(), currentQueue)
+            // Manual queue fallback
+            val q = _queue.value
+            val currentId = _playerState.value.currentSong?.id
+            val currentIndex = q.indexOfFirst { it.id == currentId }
+            if (currentIndex != -1 && currentIndex < q.size - 1) {
+                playSong(q[currentIndex + 1], q)
             }
         }
     }
 
-    fun skipToNext() = skipNext()
+    fun skipNext() = skipToNext()
 
-    fun skipPrevious() {
+    fun skipToPrevious() {
         val controller = mediaController
-        if (controller != null && controller.hasPreviousMediaItem()) {
-            controller.seekToPreviousMediaItem()
+        if (controller != null) {
+            if (controller.currentPosition > 3000L || !controller.hasPreviousMediaItem()) {
+                controller.seekTo(0L)
+            } else {
+                controller.seekToPreviousMediaItem()
+            }
         } else {
-            val currentQueue = _queue.value
-            val currentSong = _playerState.value.currentSong
-            val currentIndex = currentQueue.indexOfFirst { it.id == currentSong?.id }
+            // Manual fallback
+            val q = _queue.value
+            val currentId = _playerState.value.currentSong?.id
+            val currentIndex = q.indexOfFirst { it.id == currentId }
             if (currentIndex > 0) {
-                playSong(currentQueue[currentIndex - 1], currentQueue)
-            } else if (currentQueue.isNotEmpty()) {
-                playSong(currentQueue.last(), currentQueue)
+                playSong(q[currentIndex - 1], q)
+            } else {
+                seekTo(0)
             }
         }
     }
 
-    fun skipToPrevious() = skipPrevious()
+    fun skipPrevious() = skipToPrevious()
 
-    fun removeFromQueue(songId: String) {
-        val currentQueue = _queue.value
-        val index = currentQueue.indexOfFirst { it.id == songId }
-        if (index != -1) {
-            mediaController?.removeMediaItem(index)
-            _queue.update { it.filterNot { s -> s.id == songId } }
+    fun seekTo(seconds: Int) {
+        _playerState.update { it.copy(currentPositionSeconds = seconds) }
+        mediaController?.seekTo(seconds * 1000L)
+        _playerState.value.currentSong?.let { song ->
+            viewModelScope.launch {
+                statsDb.saveLastPosition(song.id, seconds)
+            }
         }
     }
 
     fun moveQueueItem(fromIndex: Int, toIndex: Int) {
-        _queue.update { currentQueue ->
-            if (fromIndex in currentQueue.indices && toIndex in currentQueue.indices) {
-                val mutable = currentQueue.toMutableList()
-                val item = mutable.removeAt(fromIndex)
-                mutable.add(toIndex, item)
-                mutable
-            } else {
-                currentQueue
-            }
+        val currentList = _queue.value.toMutableList()
+        if (fromIndex in currentList.indices && toIndex in currentList.indices) {
+            val item = currentList.removeAt(fromIndex)
+            currentList.add(toIndex, item)
+            _queue.value = currentList
+            mediaController?.moveMediaItem(fromIndex, toIndex)
         }
-        mediaController?.moveMediaItem(fromIndex, toIndex)
+    }
+
+    fun removeFromQueue(index: Int) {
+        val currentList = _queue.value.toMutableList()
+        if (index in currentList.indices) {
+            currentList.removeAt(index)
+            _queue.value = currentList
+            mediaController?.removeMediaItem(index)
+        }
     }
 
     fun clearQueue() {
-        val current = _playerState.value.currentSong
-        if (current != null) {
-            _queue.value = listOf(current)
+        val currentSong = _playerState.value.currentSong
+        if (currentSong != null) {
+            _queue.value = listOf(currentSong)
             mediaController?.clearMediaItems()
-            mediaController?.setMediaItem(current.toMediaItem())
+            mediaController?.setMediaItem(currentSong.toMediaItem())
         } else {
             _queue.value = emptyList()
             mediaController?.clearMediaItems()
         }
+    }
+
+    private fun startProgressTracker() {
+        progressJob?.cancel()
+        progressJob = viewModelScope.launch {
+            while (isActive) {
+                val controller = mediaController
+                if (controller != null && controller.isPlaying) {
+                    val posSec = (controller.currentPosition / 1000).toInt()
+                    _playerState.update { it.copy(currentPositionSeconds = posSec) }
+                    _playerState.value.currentSong?.let { song ->
+                        statsDb.saveLastPosition(song.id, posSec)
+                    }
+                }
+                delay(1000L)
+            }
+        }
+    }
+
+    private fun stopProgressTracker() {
+        progressJob?.cancel()
+        progressJob = null
     }
 
     private fun loadLyrics(song: Song) {
@@ -350,7 +371,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun searchLyricsOnline() {
-        // TODO: Online lyrics search provider
+        val song = _playerState.value.currentSong ?: return
+        viewModelScope.launch {
+            _lyrics.value = LyricsHelper.getLyricsForSong(context, song)
+        }
+    }
+
+    fun startSleepTimer(minutes: Int, finishLastSong: Boolean, fadeOut: Boolean) {
+        SleepTimerManager.startTimer(minutes, finishLastSong, fadeOut)
+    }
+
+    fun cancelSleepTimer() {
+        SleepTimerManager.cancelTimer()
     }
 
     override fun onCleared() {
@@ -362,16 +394,21 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 }
 
 private fun Song.toMediaItem(): MediaItem {
+    val file = if (filePath.isNotBlank()) File(filePath) else null
+    val targetUri = if (file != null && file.exists()) {
+        Uri.fromFile(file)
+    } else {
+        contentUri
+    }
+    val metadataBuilder = MediaMetadata.Builder()
+        .setTitle(title)
+        .setArtist(artist)
+        .setAlbumTitle(album)
+    albumArtUri?.let { metadataBuilder.setArtworkUri(it) }
+
     return MediaItem.Builder()
         .setMediaId(id)
-        .setUri(contentUri)
-        .setMediaMetadata(
-            MediaMetadata.Builder()
-                .setTitle(title)
-                .setArtist(artist)
-                .setAlbumTitle(album)
-                .setArtworkUri(albumArtUri)
-                .build()
-        )
+        .setUri(targetUri)
+        .setMediaMetadata(metadataBuilder.build())
         .build()
 }

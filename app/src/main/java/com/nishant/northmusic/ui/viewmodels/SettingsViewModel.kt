@@ -3,6 +3,7 @@ package com.nishant.northmusic.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nishant.northmusic.data.model.AccentColor
+import com.nishant.northmusic.data.model.AppIcon
 import com.nishant.northmusic.data.model.MetadataFixItem
 import com.nishant.northmusic.data.model.MetadataFixState
 import com.nishant.northmusic.data.model.SettingsState
@@ -46,6 +47,10 @@ class SettingsViewModel : ViewModel() {
 
     fun setAccentColor(accentColor: AccentColor) {
         updateState { it.copy(accentColor = accentColor) }
+    }
+
+    fun setAppIcon(appIcon: AppIcon) {
+        updateState { it.copy(appIcon = appIcon) }
     }
 
     fun setLargerHeaderImage(enabled: Boolean) {
@@ -334,6 +339,14 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun setOnlineMetadataLookup(enabled: Boolean) = setAutoDownloadMetadata(enabled)
+
+    fun setDownloadArtistAndAlbumArt(enabled: Boolean) {
+        updateState { it.copy(downloadArtistAndAlbumArt = enabled) }
+    }
+
+    fun setDownloadOnlyOnWifi(enabled: Boolean) {
+        updateState { it.copy(downloadOnlyOnWifi = enabled) }
+    }
 
     fun setPreferredLyricsProvider(provider: String) {
         updateState { it.copy(preferredLyricsProvider = provider, lyricsProviders = provider) }

@@ -3,6 +3,7 @@ package com.nishant.northmusic.ui.viewmodels
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.nishant.northmusic.data.local.LocalStatsDatabase
 import com.nishant.northmusic.data.model.Album
 import com.nishant.northmusic.data.model.Artist
 import com.nishant.northmusic.data.model.FolderItem
@@ -41,6 +42,7 @@ fun String.normalizeForSearch(): String {
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val musicRepo = MusicRepository.getInstance(application)
+    private val localStatsDb = LocalStatsDatabase.getInstance(application)
 
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
@@ -52,11 +54,25 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 musicRepo.albums,
                 musicRepo.artists,
                 musicRepo.folders,
-                musicRepo.isScanning
-            ) { songs, albums, artists, folders, isScanning ->
+                musicRepo.isScanning,
+                localStatsDb.userPlaylistsFlow
+            ) { array ->
+                @Suppress("UNCHECKED_CAST")
+                val songs = array[0] as List<Song>
+                @Suppress("UNCHECKED_CAST")
+                val albums = array[1] as List<Album>
+                @Suppress("UNCHECKED_CAST")
+                val artists = array[2] as List<Artist>
+                @Suppress("UNCHECKED_CAST")
+                val folders = array[3] as List<FolderItem>
+                val isScanning = array[4] as Boolean
+                @Suppress("UNCHECKED_CAST")
+                val userPlaylists = array[5] as List<Playlist>
+
                 val favCount = songs.count { it.isFavorite }
-                val dynamicPlaylists = if (favCount > 0) {
-                    listOf(
+                val dynamicPlaylists = mutableListOf<Playlist>()
+                if (favCount > 0) {
+                    dynamicPlaylists.add(
                         Playlist(
                             id = "fav",
                             title = "Favorites",
@@ -64,7 +80,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                             colorSeed = 0xFFF43F5E
                         )
                     )
-                } else emptyList()
+                }
+                dynamicPlaylists.addAll(userPlaylists)
 
                 val query = _uiState.value.searchQuery.trim().normalizeForSearch()
                 val isAsc = _uiState.value.isSortAscending

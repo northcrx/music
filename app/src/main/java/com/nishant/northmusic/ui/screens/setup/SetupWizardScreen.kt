@@ -1,5 +1,7 @@
 package com.nishant.northmusic.ui.screens.setup
 
+import com.nishant.northmusic.ui.components.AppLogo
+
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,7 +87,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nishant.northmusic.data.repository.MusicRepository
+import com.nishant.northmusic.data.model.SettingsState
+import com.nishant.northmusic.data.work.ArtistPhotoWorker
+import androidx.compose.material3.Switch
 import com.nishant.northmusic.data.model.AccentColor
+import com.nishant.northmusic.data.model.AppIcon
+import com.nishant.northmusic.ui.components.AppIconPresetSelector
 import com.nishant.northmusic.data.model.ThemeMode
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
@@ -137,6 +144,9 @@ fun SetupWizardScreen(
                 TextButton(
                     onClick = {
                         settingsViewModel.setSetupDone(true)
+                        if (state.downloadArtistAndAlbumArt) {
+                            ArtistPhotoWorker.enqueue(context)
+                        }
                         MusicRepository.getInstance(context).rescan()
                         onComplete()
                     }
@@ -156,9 +166,9 @@ fun SetupWizardScreen(
             when (page) {
                 0 -> StepWelcome()
                 1 -> StepPermissions()
-                2 -> StepAppearance(settingsViewModel, state.accentColor, state.themeMode)
+                2 -> StepAppearance(settingsViewModel, state.accentColor, state.themeMode, state.appIcon)
                 3 -> StepFolders(state.musicFolders)
-                4 -> StepDone()
+                4 -> StepDone(state, settingsViewModel)
             }
         }
 
@@ -226,20 +236,10 @@ private fun StepWelcome() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(110.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Rounded.MusicNote,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(52.dp)
-                )
-            }
-        }
+        AppLogo(
+            size = 110.dp,
+            shapeRadius = 28.dp
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -487,7 +487,8 @@ private fun StepPermissions() {
 private fun StepAppearance(
     settingsViewModel: SettingsViewModel,
     selectedAccent: AccentColor,
-    themeMode: ThemeMode
+    themeMode: ThemeMode,
+    appIcon: AppIcon
 ) {
     Column(
         modifier = Modifier
@@ -593,6 +594,22 @@ private fun StepAppearance(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "APP ICON",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        AppIconPresetSelector(
+            selectedIcon = appIcon,
+            onSelectIcon = { settingsViewModel.setAppIcon(it) }
+        )
     }
 }
 
@@ -671,7 +688,10 @@ private fun StepFolders(initialFolders: List<String>) {
 }
 
 @Composable
-private fun StepDone() {
+private fun StepDone(
+    state: SettingsState,
+    settingsViewModel: SettingsViewModel
+) {
     val infiniteTransition = rememberInfiniteTransition(label = "done_spin")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -683,7 +703,7 @@ private fun StepDone() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 32.dp),
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -693,18 +713,18 @@ private fun StepDone() {
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                 modifier = Modifier
-                    .size(120.dp)
+                    .size(90.dp)
                     .rotate(rotation)
             )
             Icon(
                 imageVector = Icons.Rounded.CheckCircle,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.size(48.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Text(
             text = "You're All Set!",
@@ -714,13 +734,64 @@ private fun StepDone() {
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Your music library is ready to explore. Tap Get Started to begin listening.",
-            style = MaterialTheme.typography.bodyLarge,
+            text = "Your music library is ready to explore.",
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Download artist photos and missing album art",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "High-res photos from Deezer and iTunes",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = state.downloadArtistAndAlbumArt,
+                        onCheckedChange = { settingsViewModel.setDownloadArtistAndAlbumArt(it) }
+                    )
+                }
+
+                if (state.downloadArtistAndAlbumArt) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Only on Wi-Fi",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        Switch(
+                            checked = state.downloadOnlyOnWifi,
+                            onCheckedChange = { settingsViewModel.setDownloadOnlyOnWifi(it) }
+                        )
+                    }
+                }
+            }
+        }
     }
 }

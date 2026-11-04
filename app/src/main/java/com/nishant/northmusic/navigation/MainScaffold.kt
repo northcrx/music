@@ -253,6 +253,7 @@ fun MainScaffold(
                 HomeScreen(
                     homeViewModel = homeViewModel,
                     playerViewModel = playerViewModel,
+                    downloadsViewModel = downloadsViewModel,
                     onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                     onNavigateToShortcut = { route -> navController.navigate(route) },
                     isSearchActive = isSearchActive,

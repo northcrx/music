@@ -3,12 +3,11 @@ package com.nishant.northmusic.util
 import com.nishant.northmusic.BuildConfig
 
 /**
- * Feature flags for Version 1.0 release.
- * Hides unfinished/in-progress features cleanly while keeping all underlying code intact.
+ * Feature flags for North Music.
  */
 object FeatureFlags {
-    // Hide Downloads tab and Add URL button for v1
-    const val SHOW_DOWNLOADS: Boolean = false
+    // Enable Downloads tab and Add URL functionality
+    const val SHOW_DOWNLOADS: Boolean = true
 
     // Equalizer navigation and menus enabled with real hardware audio effects
     const val SHOW_EQUALIZER: Boolean = true

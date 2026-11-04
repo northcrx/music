@@ -142,7 +142,10 @@ data class DownloadItem(
     val errorMessage: String? = null,
     val isPaused: Boolean = false,
     val isSelected: Boolean = false,
-    val colorSeed: Long = 0xFF2DD4BF
+    val colorSeed: Long = 0xFF2DD4BF,
+    val artworkUrl: String? = null,
+    val album: String = "",
+    val filePath: String? = null
 )
 
 enum class RepeatMode {

@@ -78,6 +78,7 @@ fun ArtworkPlaceholder(
 fun AsyncSongArtwork(
     artworkUri: Uri? = null,
     albumArtUri: Uri? = artworkUri,
+    model: Any? = null,
     colorSeed: Long = 0xFF0D9488,
     size: Dp = 48.dp,
     shape: Shape = SquircleArtworkShape,
@@ -86,9 +87,9 @@ fun AsyncSongArtwork(
     contentDescription: String? = "Artwork"
 ) {
     val context = LocalContext.current
-    val targetUri = albumArtUri ?: artworkUri
+    val targetData = model ?: albumArtUri ?: artworkUri
 
-    if (targetUri != null) {
+    if (targetData != null) {
         Box(
             modifier = modifier
                 .size(size)
@@ -106,7 +107,7 @@ fun AsyncSongArtwork(
             // Real image layered on top with crossfade
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(targetUri)
+                    .data(targetData)
                     .crossfade(true)
                     .build(),
                 contentDescription = contentDescription,

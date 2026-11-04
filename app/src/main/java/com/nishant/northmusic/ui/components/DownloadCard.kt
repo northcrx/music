@@ -112,7 +112,8 @@ fun DownloadCard(
             }
 
             // 44dp rounded artwork
-            ArtworkPlaceholder(
+            AsyncSongArtwork(
+                model = item.artworkUrl,
                 size = 44.dp,
                 colorSeed = item.colorSeed,
                 shape = RoundedCornerShape(10.dp),

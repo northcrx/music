@@ -1,5 +1,17 @@
 package com.nishant.northmusic.ui.screens
 
+import com.nishant.northmusic.data.network.CdnMusicService
+import com.nishant.northmusic.data.network.OnlineTrack
+import com.nishant.northmusic.data.network.ResolvedTrackInfo
+import com.nishant.northmusic.ui.viewmodels.DownloadsViewModel
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.rounded.AudioFile
@@ -74,6 +86,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nishant.northmusic.ui.components.AppLogo
 import com.nishant.northmusic.data.model.Song
 import com.nishant.northmusic.data.repository.normalizeText
@@ -90,6 +103,7 @@ import com.nishant.northmusic.ui.viewmodels.normalizeForSearch
 fun HomeScreen(
     homeViewModel: HomeViewModel,
     playerViewModel: PlayerViewModel,
+    downloadsViewModel: DownloadsViewModel? = null,
     onNavigateToSettings: () -> Unit,
     onNavigateToShortcut: (String) -> Unit = {},
     isSearchActive: Boolean = false,
@@ -131,6 +145,33 @@ fun HomeScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var searchCategory by remember { mutableStateOf("Songs") }
+    val downloadsState by downloadsViewModel?.uiState?.collectAsState() ?: remember { mutableStateOf(null) }
+    var onlineTracks by remember { mutableStateOf<List<OnlineTrack>>(emptyList()) }
+    var isOnlineSearching by remember { mutableStateOf(false) }
+    var resolvedUrlTrack by remember { mutableStateOf<ResolvedTrackInfo?>(null) }
+    var isResolvingUrl by remember { mutableStateOf(false) }
+
+    LaunchedEffect(searchQuery) {
+        val q = searchQuery.trim()
+        if (q.isBlank()) {
+            onlineTracks = emptyList()
+            resolvedUrlTrack = null
+            isOnlineSearching = false
+            isResolvingUrl = false
+            return@LaunchedEffect
+        }
+
+        if (CdnMusicService.isUrl(q)) {
+            isResolvingUrl = true
+            resolvedUrlTrack = CdnMusicService.resolveUrl(q)
+            isResolvingUrl = false
+        } else {
+            delay(300)
+            isOnlineSearching = true
+            onlineTracks = CdnMusicService.searchTracks(q, limit = 15)
+            isOnlineSearching = false
+        }
+    }
     val recentSearches = remember {
         mutableStateListOf<String>()
     }
@@ -383,17 +424,247 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    // Query is present: Show Live Match Count and Matching Items
-                    item {
-                        Text(
-                            text = "${liveSearchResults.size} results found",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-                        )
+                    // 1. URL Resolution Card
+                    if (CdnMusicService.isUrl(searchQuery)) {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                            ) {
+                                if (isResolvingUrl) {
+                                    Row(
+                                        modifier = Modifier.padding(20.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.5.dp)
+                                        Text("Resolving track from URL...", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                } else if (resolvedUrlTrack != null) {
+                                    val resolved = resolvedUrlTrack!!
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        AsyncSongArtwork(
+                                            model = resolved.artworkUrl,
+                                            size = 52.dp,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = resolved.title,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "${resolved.artist} ? ${resolved.bitrate}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        FilledTonalButton(
+                                            onClick = {
+                                                downloadsViewModel?.enqueue(
+                                                    resolved.title,
+                                                    resolved.artist,
+                                                    resolved.album,
+                                                    resolved.downloadUrl,
+                                                    resolved.artworkUrl
+                                                )
+                                                onSearchActiveChange(false)
+                                                searchQuery = ""
+                                                focusManager.clearFocus()
+                                            },
+                                            shape = PillShape
+                                        ) {
+                                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Download")
+                                        }
+                                    }
+                                } else {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.Link, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        Text("Paste detected. Tap search to resolve.", style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
+                        }
                     }
 
-                    if (liveSearchResults.isEmpty()) {
+                    // 2. Online Search Results (JioSaavn 320kbps CDN)
+                    if (isOnlineSearching) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Searching online (320kbps)...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    if (onlineTracks.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "ONLINE MUSIC (320k Audio)",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        items(onlineTracks, key = { it.id }) { track ->
+                            val isDownloaded = downloadsState?.completedItems?.any { it.title.equals(track.title, ignoreCase = true) } == true
+                            val isDownloading = downloadsState?.downloadingItems?.any { it.title.equals(track.title, ignoreCase = true) } == true
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        downloadsViewModel?.enqueue(track.title, track.artist, track.album, track.downloadUrl, track.artworkUrl)
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                AsyncSongArtwork(
+                                    model = track.artworkUrl,
+                                    size = 48.dp,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = track.title,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "${track.artist} ? ${track.album.ifEmpty { "Single" }}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = "320k",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Dedicated Download Button
+                                IconButton(
+                                    onClick = {
+                                        if (!isDownloaded && !isDownloading) {
+                                            downloadsViewModel?.enqueue(track.title, track.artist, track.album, track.downloadUrl, track.artworkUrl)
+                                        }
+                                    },
+                                    modifier = Modifier.size(42.dp)
+                                ) {
+                                    when {
+                                        isDownloaded -> {
+                                            Icon(
+                                                imageVector = Icons.Rounded.CheckCircle,
+                                                contentDescription = "Downloaded",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        isDownloading -> {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(22.dp),
+                                                strokeWidth = 2.5.dp,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        else -> {
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Download,
+                                                        contentDescription = "Download",
+                                                        tint = MaterialTheme.colorScheme.onSurface,
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. Local Library Results
+                    if (liveSearchResults.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "LOCAL LIBRARY (${liveSearchResults.size})",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                            )
+                        }
+
+                        items(liveSearchResults, key = { it.id }) { song ->
+                            SongItem(
+                                song = song,
+                                isPlaying = playerState.currentSong?.id == song.id && playerState.isPlaying,
+                                onClick = {
+                                    if (!recentSearches.contains(song.title)) {
+                                        recentSearches.add(0, song.title)
+                                    }
+                                    playerViewModel.playSong(song, liveSearchResults, source = "Search results")
+                                },
+                                onOptionsClick = { }
+                            )
+                        }
+                    } else if (onlineTracks.isEmpty() && !isOnlineSearching && !CdnMusicService.isUrl(searchQuery)) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -407,20 +678,6 @@ fun HomeScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        }
-                    } else {
-                        items(liveSearchResults, key = { it.id }) { song ->
-                            SongItem(
-                                song = song,
-                                isPlaying = playerState.currentSong?.id == song.id && playerState.isPlaying,
-                                onClick = {
-                                    if (!recentSearches.contains(song.title)) {
-                                        recentSearches.add(0, song.title)
-                                    }
-                                    playerViewModel.playSong(song, liveSearchResults, source = "Search results")
-                                },
-                                onOptionsClick = { /* TODO: Song context menu */ }
-                            )
                         }
                     }
                 }
@@ -665,86 +922,88 @@ fun HomeScreen(
                     }
                 }
 
-                // 3. "Your music" section: 5-8 songs using shared SongItem component
+                // 3. "Downloaded music" section: Focuses on user-downloaded music only
                 item {
+                    val downloadedSongs = uiState.yourMusic.filter {
+                        it.filePath.contains("NorthMusic", ignoreCase = true) ||
+                        it.filePath.contains("Download", ignoreCase = true)
+                    }
+
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Your music",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Downloaded music",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (downloadedSongs.isNotEmpty()) {
+                                Text(
+                                    text = "${downloadedSongs.size} tracks",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        val displaySongs = uiState.yourMusic.take(8)
-                        if (displaySongs.isEmpty()) {
-                            if (!hasAudioPermission) {
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                                    shape = RoundedCornerShape(20.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                        if (downloadedSongs.isEmpty()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(20.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Column(
-                                        modifier = Modifier.padding(20.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.AudioFile,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(36.dp)
-                                        )
-                                        Text(
-                                            text = "Permission required to access music",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            textAlign = TextAlign.Center
-                                        )
-                                        Text(
-                                            text = "North Music needs permission to scan and play audio tracks stored on this device.",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            textAlign = TextAlign.Center
-                                        )
-                                        Button(
-                                            onClick = {
-                                                permissionLauncher.launch(PermissionUtils.getPermissionsToRequest())
-                                            },
-                                            shape = PillShape,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(44.dp)
-                                        ) {
-                                            Text("Grant access")
-                                        }
-                                    }
-                                }
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 24.dp, horizontal = 16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = if (uiState.isScanning) "Scanning your audio files..." else "No songs found on your device yet",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    Icon(
+                                        imageVector = Icons.Rounded.Download,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(32.dp)
                                     )
+                                    Text(
+                                        text = "No downloaded tracks yet",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Text(
+                                        text = "Search any song above or paste a Spotify / YouTube Music link to download 320kbps high-res music.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    FilledTonalButton(
+                                        onClick = { onSearchActiveChange(true) },
+                                        shape = PillShape
+                                    ) {
+                                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Search Music")
+                                    }
                                 }
                             }
                         } else {
-                            displaySongs.forEach { song ->
+                            downloadedSongs.take(12).forEach { song ->
                                 SongItem(
                                     song = song,
                                     isPlaying = playerState.currentSong?.id == song.id && playerState.isPlaying,
-                                    onClick = { playerViewModel.playSong(song, uiState.yourMusic, source = "Songs") },
-                                    onOptionsClick = { /* TODO: Song context options */ }
+                                    onClick = { playerViewModel.playSong(song, downloadedSongs, source = "Downloaded music") },
+                                    onOptionsClick = { }
                                 )
                             }
                         }

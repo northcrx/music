@@ -563,8 +563,8 @@ fun DownloadsScreen(
                 OutlinedTextField(
                     value = urlInputText,
                     onValueChange = { urlInputText = it },
-                    label = { Text("Paste audio URLs (one per line)") },
-                    placeholder = { Text("https://example.com/audio.mp3\nhttps://audio.cdn/track.flac") },
+                    label = { Text("Paste Spotify, YouTube, or JioSaavn links") },
+                    placeholder = { Text("https://open.spotify.com/track/...\nhttps://youtube.com/watch?v=...\nhttps://www.jiosaavn.com/song/...") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(140.dp),

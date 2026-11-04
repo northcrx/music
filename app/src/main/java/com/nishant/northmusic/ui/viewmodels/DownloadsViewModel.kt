@@ -1,13 +1,18 @@
 package com.nishant.northmusic.ui.viewmodels
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.nishant.northmusic.data.model.DownloadItem
 import com.nishant.northmusic.data.model.DownloadStatus
-import com.nishant.northmusic.data.model.SampleData
+import com.nishant.northmusic.data.network.CdnMusicService
+import com.nishant.northmusic.data.network.MusicDownloadManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 enum class DownloadsTab(val label: String) {
     ACTIVE("Active"),
@@ -17,16 +22,16 @@ enum class DownloadsTab(val label: String) {
 
 data class DownloadsUiState(
     val selectedTab: DownloadsTab = DownloadsTab.ACTIVE,
-    val downloadingItems: List<DownloadItem> = SampleData.downloadingItems,
-    val completedItems: List<DownloadItem> = SampleData.completedItems,
-    val failedItems: List<DownloadItem> = SampleData.failedItems,
+    val downloadingItems: List<DownloadItem> = emptyList(),
+    val completedItems: List<DownloadItem> = emptyList(),
+    val failedItems: List<DownloadItem> = emptyList(),
     val isSelectionMode: Boolean = false,
     val selectedItemIds: Set<String> = emptySet(),
-    val downloadingCount: Int = 58,
-    val completedCount: Int = 142,
-    val failedCount: Int = 28,
-    val totalCount: Int = 200,
-    val networkSpeedText: String = "38 MB/s"
+    val downloadingCount: Int = 0,
+    val completedCount: Int = 0,
+    val failedCount: Int = 0,
+    val totalCount: Int = 0,
+    val networkSpeedText: String = "Idle"
 ) {
     val selectedCount: Int
         get() = selectedItemIds.size
@@ -39,10 +44,36 @@ data class DownloadsUiState(
         }
 }
 
-class DownloadsViewModel : ViewModel() {
+class DownloadsViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val downloadManager = MusicDownloadManager.getInstance(application)
     private val _uiState = MutableStateFlow(DownloadsUiState())
     val uiState: StateFlow<DownloadsUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            downloadManager.downloadItems.collect { items ->
+                val downloading = items.filter { it.status == DownloadStatus.DOWNLOADING }
+                val completed = items.filter { it.status == DownloadStatus.COMPLETED }
+                val failed = items.filter { it.status == DownloadStatus.FAILED }
+
+                val activeSpeed = downloading.firstOrNull { it.speedText.contains("MB/s") }?.speedText ?: "Idle"
+
+                _uiState.update { current ->
+                    current.copy(
+                        downloadingItems = downloading.map { it.copy(isSelected = it.id in current.selectedItemIds) },
+                        completedItems = completed.map { it.copy(isSelected = it.id in current.selectedItemIds) },
+                        failedItems = failed.map { it.copy(isSelected = it.id in current.selectedItemIds) },
+                        downloadingCount = downloading.size,
+                        completedCount = completed.size,
+                        failedCount = failed.size,
+                        totalCount = items.size,
+                        networkSpeedText = activeSpeed
+                    )
+                }
+            }
+        }
+    }
 
     fun onTabSelected(tab: DownloadsTab) {
         _uiState.update { it.copy(selectedTab = tab) }
@@ -134,127 +165,85 @@ class DownloadsViewModel : ViewModel() {
     }
 
     fun togglePauseResume(itemId: String) {
-        _uiState.update { current ->
-            val updatedDownloading = current.downloadingItems.map { item ->
-                if (item.id == itemId) {
-                    item.copy(isPaused = !item.isPaused)
-                } else item
-            }
-            current.copy(downloadingItems = updatedDownloading)
+        val item = _uiState.value.downloadingItems.find { it.id == itemId } ?: return
+        if (item.isPaused) {
+            downloadManager.resume(itemId)
+        } else {
+            downloadManager.pause(itemId)
         }
-        // TODO: Signal download worker to pause/resume
     }
 
     fun pauseAll() {
-        _uiState.update { current ->
-            current.copy(
-                downloadingItems = current.downloadingItems.map { it.copy(isPaused = true) }
-            )
-        }
-        // TODO: Pause all active download tasks
+        downloadManager.pauseAll()
     }
 
     fun resumeAll() {
-        _uiState.update { current ->
-            current.copy(
-                downloadingItems = current.downloadingItems.map { it.copy(isPaused = false) }
-            )
-        }
-        // TODO: Resume all active download tasks
+        downloadManager.resumeAll()
     }
 
     fun pauseSelected() {
         val selected = _uiState.value.selectedItemIds
-        _uiState.update { current ->
-            current.copy(
-                downloadingItems = current.downloadingItems.map {
-                    if (it.id in selected) it.copy(isPaused = true) else it
-                }
-            )
-        }
-        // TODO: Batch pause download tasks
+        selected.forEach { downloadManager.pause(it) }
     }
 
     fun resumeSelected() {
         val selected = _uiState.value.selectedItemIds
-        _uiState.update { current ->
-            current.copy(
-                downloadingItems = current.downloadingItems.map {
-                    if (it.id in selected) it.copy(isPaused = false) else it
-                }
-            )
-        }
-        // TODO: Batch resume download tasks
+        selected.forEach { downloadManager.resume(it) }
     }
 
     fun deleteSelected() {
         val selected = _uiState.value.selectedItemIds
-        _uiState.update { current ->
-            current.copy(
-                isSelectionMode = false,
-                selectedItemIds = emptySet(),
-                downloadingItems = current.downloadingItems.filterNot { it.id in selected },
-                completedItems = current.completedItems.filterNot { it.id in selected },
-                failedItems = current.failedItems.filterNot { it.id in selected }
-            )
-        }
-        // TODO: Delete downloaded files from disk and database
+        selected.forEach { downloadManager.cancel(it) }
+        exitSelectionMode()
     }
 
     fun clearCompleted() {
-        _uiState.update { current ->
-            current.copy(
-                completedItems = emptyList(),
-                completedCount = 0
-            )
-        }
-        // TODO: Clear completed records from history
+        downloadManager.clearCompleted()
     }
 
     fun retryAllFailed() {
-        _uiState.update { current ->
-            val recovered = current.failedItems.map {
-                it.copy(
-                    status = DownloadStatus.DOWNLOADING,
-                    errorMessage = null,
-                    isPaused = false,
-                    speedText = "Retrying..."
-                )
-            }
-            current.copy(
-                failedItems = emptyList(),
-                downloadingItems = current.downloadingItems + recovered,
-                failedCount = 0
-            )
-        }
-        // TODO: Re-enqueue all failed download jobs
+        downloadManager.retryAllFailed()
+    }
+
+    fun enqueue(
+        title: String,
+        artist: String,
+        album: String = "",
+        streamUrl: String? = null,
+        artworkUrl: String? = null
+    ) {
+        downloadManager.enqueueDownload(title, artist, album, streamUrl, artworkUrl)
+        _uiState.update { it.copy(selectedTab = DownloadsTab.ACTIVE) }
     }
 
     fun addUrls(urls: List<String>) {
-        val newItems = urls.mapIndexed { idx, url ->
-            val cleanUrl = url.trim()
-            val filename = cleanUrl.substringAfterLast("/").ifEmpty { "Audio_Stream_$idx.mp3" }
-            DownloadItem(
-                id = "d_new_${System.currentTimeMillis()}_$idx",
-                title = filename.substringBeforeLast("."),
-                artist = "Direct URL Source",
-                progress = 0.05f,
-                totalSizeMb = 14.5f,
-                downloadedMb = 0.7f,
-                speedText = "1.1 MB/s",
-                status = DownloadStatus.DOWNLOADING,
-                isPaused = false,
-                isSelected = false,
-                colorSeed = 0xFF0D9488
-            )
+        _uiState.update { it.copy(selectedTab = DownloadsTab.ACTIVE) }
+        viewModelScope.launch(Dispatchers.IO) {
+            urls.forEach { rawUrl ->
+                val url = rawUrl.trim()
+                if (url.isNotBlank()) {
+                    val resolved = CdnMusicService.resolveUrl(url)
+                    if (resolved != null) {
+                        downloadManager.enqueueDownload(
+                            title = resolved.title,
+                            artist = resolved.artist,
+                            album = resolved.album,
+                            streamUrl = resolved.downloadUrl,
+                            artworkUrl = resolved.artworkUrl
+                        )
+                    } else {
+                        // If direct link fallback
+                        val filename = url.substringAfterLast("/").substringBefore("?").ifEmpty { "Audio_Track.m4a" }
+                        downloadManager.enqueueDownload(
+                            title = filename.substringBeforeLast("."),
+                            artist = "Downloaded Link",
+                            album = "Downloads",
+                            streamUrl = url,
+                            artworkUrl = null
+                        )
+                    }
+                }
+            }
         }
-        _uiState.update { current ->
-            current.copy(
-                downloadingItems = newItems + current.downloadingItems,
-                downloadingCount = current.downloadingCount + newItems.size,
-                selectedTab = DownloadsTab.ACTIVE
-            )
-        }
-        // TODO: onAddUrls(list) - dispatch download tasks to WorkManager / DownloadService
     }
 }

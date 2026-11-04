@@ -19,6 +19,23 @@ class SettingsViewModel : ViewModel() {
     private val _settingsState = MutableStateFlow(SettingsState())
     val settingsState: StateFlow<SettingsState> = _settingsState.asStateFlow()
 
+    // --- Navigation Settings ---
+    fun setHoldTabToSearch(enabled: Boolean) {
+        _settingsState.update { it.copy(holdTabToSearch = enabled) }
+        // TODO: Persist to DataStore
+    }
+
+    fun setRememberLastPage(enabled: Boolean) {
+        _settingsState.update { it.copy(rememberLastPage = enabled) }
+        // TODO: Persist to DataStore
+    }
+
+    fun setLastOpenedRoute(route: String) {
+        _settingsState.update { it.copy(lastOpenedRoute = route) }
+        // TODO: Persist to DataStore
+    }
+
+    // --- Appearance Settings ---
     fun toggleDynamicColor(enabled: Boolean) {
         _settingsState.update { it.copy(dynamicColor = enabled) }
         // TODO: Save preference to DataStore
@@ -34,49 +51,175 @@ class SettingsViewModel : ViewModel() {
         // TODO: Save preference to DataStore
     }
 
+    fun setLargerHeaderImage(enabled: Boolean) {
+        _settingsState.update { it.copy(largerHeaderImage = enabled) }
+    }
+
+    fun setTabTitlesMode(mode: String) {
+        _settingsState.update { it.copy(tabTitlesMode = mode) }
+    }
+
+    fun setScrollingTextForLongTitles(enabled: Boolean) {
+        _settingsState.update { it.copy(scrollingTextForLongTitles = enabled) }
+    }
+
+    // --- Now Playing Settings ---
+    fun setAnimateControls(enabled: Boolean) {
+        _settingsState.update { it.copy(animateControls = enabled) }
+    }
+
+    fun setExtraControlsMiniPlayer(enabled: Boolean) {
+        _settingsState.update { it.copy(extraControlsMiniPlayer = enabled) }
+    }
+
+    fun setAdaptiveControls(enabled: Boolean) {
+        _settingsState.update { it.copy(adaptiveControls = enabled) }
+    }
+
+    fun setSquigglySeekBar(enabled: Boolean) {
+        _settingsState.update { it.copy(squigglySeekBar = enabled) }
+    }
+
+    fun setPreferRemainingTime(enabled: Boolean) {
+        _settingsState.update { it.copy(preferRemainingTime = enabled) }
+    }
+
+    // --- Lyrics Settings ---
+    fun setShowTranslation(enabled: Boolean) {
+        _settingsState.update { it.copy(showTranslation = enabled) }
+    }
+
+    fun setShowTransliteration(enabled: Boolean) {
+        _settingsState.update { it.copy(showTransliteration = enabled) }
+    }
+
+    fun setCenterCurrentLine(enabled: Boolean) {
+        _settingsState.update { it.copy(centerCurrentLine = enabled) }
+    }
+
+    fun setCenterLyricsHorizontally(enabled: Boolean) {
+        _settingsState.update { it.copy(centerLyricsHorizontally = enabled) }
+    }
+
+    fun setLyricsFontSize(size: Float) {
+        _settingsState.update { it.copy(lyricsFontSize = size) }
+    }
+
+    // --- Playback Settings ---
     fun toggleGaplessPlayback(enabled: Boolean) {
         _settingsState.update { it.copy(gaplessPlayback = enabled) }
-        // TODO: Update audio player configuration
     }
 
     fun toggleAudioNormalization(enabled: Boolean) {
         _settingsState.update { it.copy(audioNormalization = enabled) }
-        // TODO: Apply audio effect processor
     }
 
     fun toggleHighQualityAudio(enabled: Boolean) {
         _settingsState.update { it.copy(highQualityAudio = enabled) }
-        // TODO: Update audio decoder preference
     }
 
-    fun toggleWifiOnlyDownloads(enabled: Boolean) {
-        _settingsState.update { it.copy(wifiOnlyDownloads = enabled) }
-        // TODO: Set download network constraints
+    fun setReplayGainMode(mode: String) {
+        _settingsState.update { it.copy(replayGainMode = mode) }
     }
 
-    fun setMaxParallelDownloads(max: Int) {
-        _settingsState.update { it.copy(maxParallelDownloads = max) }
-        // TODO: Update download manager thread pool
+    fun setHeadphonesResume(enabled: Boolean) {
+        _settingsState.update { it.copy(headphonesResumeOnConnect = enabled) }
     }
 
-    fun setSaveFolder(path: String) {
-        _settingsState.update { it.copy(saveFolder = path) }
-        // TODO: Save preference to DataStore
+    fun setHeadphonesPause(enabled: Boolean) {
+        _settingsState.update { it.copy(headphonesPauseOnDisconnect = enabled) }
     }
 
-    fun setFileNamingFormat(format: String) {
-        _settingsState.update { it.copy(fileNamingFormat = format) }
-        // TODO: Save preference to DataStore
+    fun setBluetoothResume(enabled: Boolean) {
+        _settingsState.update { it.copy(bluetoothResumeOnConnect = enabled) }
+    }
+
+    fun setBluetoothPause(enabled: Boolean) {
+        _settingsState.update { it.copy(bluetoothPauseOnDisconnect = enabled) }
+    }
+
+    fun setAudioFocus(enabled: Boolean) {
+        _settingsState.update { it.copy(audioFocus = enabled) }
+    }
+
+    // --- Library Settings ---
+    fun setLibraryCategories(categories: List<String>) {
+        _settingsState.update { it.copy(libraryCategories = categories) }
+    }
+
+    fun setMinSongDurationSeconds(seconds: Int) {
+        _settingsState.update { it.copy(minSongDurationSeconds = seconds) }
+    }
+
+    fun setArtistMinSongCount(count: Int) {
+        _settingsState.update { it.copy(artistMinSongCount = count) }
+    }
+
+    fun setAlbumMinSongCount(count: Int) {
+        _settingsState.update { it.copy(albumMinSongCount = count) }
+    }
+
+    fun setFoldersBlacklist(folders: List<String>) {
+        _settingsState.update { it.copy(foldersBlacklist = folders) }
+    }
+
+    fun setIgnoreArticlesWhenSorting(enabled: Boolean) {
+        _settingsState.update { it.copy(ignoreArticlesWhenSorting = enabled) }
+    }
+
+    fun setSendDeletedToTrash(enabled: Boolean) {
+        _settingsState.update { it.copy(sendDeletedToTrash = enabled) }
+    }
+
+    fun setRecordListeningHistory(enabled: Boolean) {
+        _settingsState.update { it.copy(recordListeningHistory = enabled) }
+    }
+
+    fun setHistoryIntervalDays(days: Int) {
+        _settingsState.update { it.copy(historyIntervalDays = days) }
+    }
+
+    fun setLastAddedIntervalDays(days: Int) {
+        _settingsState.update { it.copy(lastAddedIntervalDays = days) }
     }
 
     fun toggleIgnoreShortTracks(enabled: Boolean) {
         _settingsState.update { it.copy(ignoreShortTracks = enabled) }
-        // TODO: Update media scanner threshold
+    }
+
+    // --- Downloads Settings ---
+    fun toggleWifiOnlyDownloads(enabled: Boolean) {
+        _settingsState.update { it.copy(wifiOnlyDownloads = enabled) }
+    }
+
+    fun setMaxParallelDownloads(max: Int) {
+        _settingsState.update { it.copy(maxParallelDownloads = max) }
+    }
+
+    fun setSaveFolder(path: String) {
+        _settingsState.update { it.copy(saveFolder = path) }
+    }
+
+    fun setFileNamingFormat(format: String) {
+        _settingsState.update { it.copy(fileNamingFormat = format) }
+    }
+
+    // --- Network Settings ---
+    fun setOnlineMetadataLookup(enabled: Boolean) {
+        _settingsState.update { it.copy(onlineMetadataLookup = enabled) }
+    }
+
+    // --- Advanced Settings ---
+    fun setAppLanguage(lang: String) {
+        _settingsState.update { it.copy(appLanguage = lang) }
+    }
+
+    fun setRotationLock(enabled: Boolean) {
+        _settingsState.update { it.copy(rotationLock = enabled) }
     }
 
     fun setSetupDone(done: Boolean) {
         _settingsState.update { it.copy(setupDone = done) }
-        // TODO: Persist setupDone to DataStore
     }
 
     fun triggerRescanLibrary() {
@@ -84,7 +227,6 @@ class SettingsViewModel : ViewModel() {
             _settingsState.update { it.copy(isRescanning = true) }
             delay(1800)
             _settingsState.update { it.copy(isRescanning = false) }
-            // TODO: Trigger full storage scan via WorkManager
         }
     }
 

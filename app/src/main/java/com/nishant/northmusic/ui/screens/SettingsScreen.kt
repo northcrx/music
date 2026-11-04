@@ -19,11 +19,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.FolderSpecial
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SettingsSuggest
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,16 +49,20 @@ import com.nishant.northmusic.navigation.BottomListScrollPadding
 
 /**
  * Settings Hub:
- * Shows a clean list of category rows with icon, title, one-line summary, and chevron.
- * Each row navigates to its dedicated sub-screen with a back arrow and top app bar.
+ * Shows a clean list of 9 category cards with icon, title, one-line summary, and chevron.
+ * Each card navigates to its dedicated sub-screen with a back arrow and top app bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateToAppearance: () -> Unit,
+    onNavigateToNowPlaying: () -> Unit,
+    onNavigateToLyrics: () -> Unit,
     onNavigateToPlayback: () -> Unit,
-    onNavigateToDownloads: () -> Unit,
     onNavigateToLibrary: () -> Unit,
+    onNavigateToDownloads: () -> Unit,
+    onNavigateToNetwork: () -> Unit,
+    onNavigateToAdvanced: () -> Unit,
     onNavigateToAbout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -100,9 +108,9 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = BottomListScrollPadding),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Category 1: Appearance
+            // 1. Appearance
             item {
                 SettingsCategoryHubCard(
                     title = "Appearance",
@@ -112,17 +120,47 @@ fun SettingsScreen(
                 )
             }
 
-            // Category 2: Playback
+            // 2. Now Playing
+            item {
+                SettingsCategoryHubCard(
+                    title = "Now playing",
+                    summary = "Seek bar style, player controls animation & mini player",
+                    icon = Icons.Rounded.GraphicEq,
+                    onClick = onNavigateToNowPlaying
+                )
+            }
+
+            // 3. Lyrics
+            item {
+                SettingsCategoryHubCard(
+                    title = "Lyrics",
+                    summary = "Translation, transliteration, font size & alignment",
+                    icon = Icons.Rounded.Lyrics,
+                    onClick = onNavigateToLyrics
+                )
+            }
+
+            // 4. Playback
             item {
                 SettingsCategoryHubCard(
                     title = "Playback",
-                    summary = "Equalizer, gapless transition & audio normalization",
+                    summary = "Equalizer, gapless transition, normalization & devices",
                     icon = Icons.Rounded.Tune,
                     onClick = onNavigateToPlayback
                 )
             }
 
-            // Category 3: Downloads
+            // 5. Library
+            item {
+                SettingsCategoryHubCard(
+                    title = "Library",
+                    summary = "Categories, duration filter, scan folders & metadata repair",
+                    icon = Icons.Rounded.FolderSpecial,
+                    onClick = onNavigateToLibrary
+                )
+            }
+
+            // 6. Downloads
             item {
                 SettingsCategoryHubCard(
                     title = "Downloads",
@@ -132,21 +170,31 @@ fun SettingsScreen(
                 )
             }
 
-            // Category 4: Library
+            // 7. Network
             item {
                 SettingsCategoryHubCard(
-                    title = "Library",
-                    summary = "Scan folders, short track filter & iTunes metadata repair",
-                    icon = Icons.Rounded.FolderSpecial,
-                    onClick = onNavigateToLibrary
+                    title = "Network",
+                    summary = "Online metadata lookup & lyrics search providers",
+                    icon = Icons.Rounded.CloudDownload,
+                    onClick = onNavigateToNetwork
                 )
             }
 
-            // Category 5: About
+            // 8. Advanced
+            item {
+                SettingsCategoryHubCard(
+                    title = "Advanced",
+                    summary = "Language, backup & restore, rotation lock & setup wizard",
+                    icon = Icons.Rounded.SettingsSuggest,
+                    onClick = onNavigateToAdvanced
+                )
+            }
+
+            // 9. About
             item {
                 SettingsCategoryHubCard(
                     title = "About",
-                    summary = "Version 1.0.0, open source licenses & setup wizard",
+                    summary = "Version 1.0.0, open source licenses & legal info",
                     icon = Icons.Rounded.Info,
                     onClick = onNavigateToAbout
                 )
@@ -173,7 +221,7 @@ fun SettingsCategoryHubCard(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(22.dp))
                 .clickable { onClick() }
-                .padding(horizontal = 18.dp, vertical = 20.dp),
+                .padding(horizontal = 18.dp, vertical = 18.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

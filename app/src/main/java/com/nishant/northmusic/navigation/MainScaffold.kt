@@ -1,6 +1,8 @@
 package com.nishant.northmusic.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,11 +15,16 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,6 +33,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.nishant.northmusic.data.model.SampleData
 import com.nishant.northmusic.ui.components.MiniPlayer
 import com.nishant.northmusic.ui.screens.DownloadsScreen
 import com.nishant.northmusic.ui.screens.EqualizerScreen
@@ -33,10 +41,15 @@ import com.nishant.northmusic.ui.screens.HomeScreen
 import com.nishant.northmusic.ui.screens.LibraryScreen
 import com.nishant.northmusic.ui.screens.NowPlayingScreen
 import com.nishant.northmusic.ui.screens.SettingsScreen
+import com.nishant.northmusic.ui.screens.SongListSubScreen
 import com.nishant.northmusic.ui.screens.settings.AboutSettingsScreen
+import com.nishant.northmusic.ui.screens.settings.AdvancedSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.AppearanceSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.DownloadsSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.LibrarySettingsScreen
+import com.nishant.northmusic.ui.screens.settings.LyricsSettingsScreen
+import com.nishant.northmusic.ui.screens.settings.NetworkSettingsScreen
+import com.nishant.northmusic.ui.screens.settings.NowPlayingSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.PlaybackSettingsScreen
 import com.nishant.northmusic.ui.screens.setup.SetupWizardScreen
 import com.nishant.northmusic.ui.viewmodels.DownloadsViewModel
@@ -45,6 +58,7 @@ import com.nishant.northmusic.ui.viewmodels.HomeViewModel
 import com.nishant.northmusic.ui.viewmodels.LibraryViewModel
 import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
+import kotlinx.coroutines.launch
 
 val BottomListScrollPadding = 16.dp
 
@@ -65,20 +79,41 @@ fun MainScaffold(
     val downloadsUiState by downloadsViewModel.uiState.collectAsState()
     val settingsState by settingsViewModel.settingsState.collectAsState()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
     val isFullScreenRoute = currentRoute == Screen.NowPlaying.route ||
             currentRoute == Screen.Equalizer.route ||
             currentRoute == Screen.SetupWizard.route ||
+            currentRoute == Screen.Settings.route ||
             currentRoute == Screen.SettingsAppearance.route ||
+            currentRoute == Screen.SettingsNowPlaying.route ||
+            currentRoute == Screen.SettingsLyrics.route ||
             currentRoute == Screen.SettingsPlayback.route ||
             currentRoute == Screen.SettingsDownloads.route ||
             currentRoute == Screen.SettingsLibrary.route ||
-            currentRoute == Screen.SettingsAbout.route
+            currentRoute == Screen.SettingsNetwork.route ||
+            currentRoute == Screen.SettingsAdvanced.route ||
+            currentRoute == Screen.SettingsAbout.route ||
+            currentRoute == Screen.TopTracks.route ||
+            currentRoute == Screen.LastAdded.route ||
+            currentRoute == Screen.History.route ||
+            currentRoute == Screen.Favorites.route
 
     // Mini-player is hidden during selection mode on Downloads screen or when full screen is open
     val isMiniPlayerVisible = !isFullScreenRoute && !downloadsUiState.isSelectionMode
 
+    val initialStartDestination = if (!settingsState.setupDone) {
+        Screen.SetupWizard.route
+    } else if (settingsState.rememberLastPage && settingsState.lastOpenedRoute.isNotBlank()) {
+        settingsState.lastOpenedRoute
+    } else {
+        Screen.Home.route
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (!isFullScreenRoute) {
                 Column(
@@ -99,7 +134,7 @@ fun MainScaffold(
                         onFavoriteClick = { playerViewModel.toggleFavorite() }
                     )
 
-                    // Navigation Bar (100% opaque surfaceContainer, neutral near-black)
+                    // Navigation Bar (3 items: Home, Library, Downloads)
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         tonalElevation = 4.dp
@@ -107,10 +142,14 @@ fun MainScaffold(
                         BottomNavItems.forEach { screen ->
                             val selected = currentRoute == screen.route
                             val iconRes = if (selected) screen.filledIconRes else screen.outlinedIconRes
+
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
                                     if (currentRoute != screen.route) {
+                                        if (settingsState.rememberLastPage) {
+                                            settingsViewModel.setLastOpenedRoute(screen.route)
+                                        }
                                         navController.navigate(screen.route) {
                                             popUpTo(navController.graph.findStartDestination().id) {
                                                 saveState = true
@@ -121,10 +160,24 @@ fun MainScaffold(
                                     }
                                 },
                                 icon = {
-                                    Icon(
-                                        painter = painterResource(id = iconRes),
-                                        contentDescription = screen.title
-                                    )
+                                    Box(
+                                        modifier = Modifier.pointerInput(screen.route, settingsState.holdTabToSearch) {
+                                            detectTapGestures(
+                                                onLongPress = {
+                                                    if (settingsState.holdTabToSearch) {
+                                                        coroutineScope.launch {
+                                                            snackbarHostState.showSnackbar("Hold tab to search: focus search (TODO)")
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = iconRes),
+                                            contentDescription = screen.title
+                                        )
+                                    }
                                 },
                                 label = {
                                     Text(
@@ -148,7 +201,7 @@ fun MainScaffold(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = if (settingsState.setupDone) Screen.Home.route else Screen.SetupWizard.route,
+            startDestination = initialStartDestination,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -156,7 +209,13 @@ fun MainScaffold(
             composable(Screen.Home.route) {
                 HomeScreen(
                     homeViewModel = homeViewModel,
-                    playerViewModel = playerViewModel
+                    playerViewModel = playerViewModel,
+                    onNavigateToSettings = {
+                        navController.navigate(Screen.Settings.route)
+                    },
+                    onNavigateToShortcut = { route ->
+                        navController.navigate(route)
+                    }
                 )
             }
             composable(Screen.Library.route) {
@@ -174,14 +233,66 @@ fun MainScaffold(
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onNavigateToAppearance = { navController.navigate(Screen.SettingsAppearance.route) },
+                    onNavigateToNowPlaying = { navController.navigate(Screen.SettingsNowPlaying.route) },
+                    onNavigateToLyrics = { navController.navigate(Screen.SettingsLyrics.route) },
                     onNavigateToPlayback = { navController.navigate(Screen.SettingsPlayback.route) },
-                    onNavigateToDownloads = { navController.navigate(Screen.SettingsDownloads.route) },
                     onNavigateToLibrary = { navController.navigate(Screen.SettingsLibrary.route) },
+                    onNavigateToDownloads = { navController.navigate(Screen.SettingsDownloads.route) },
+                    onNavigateToNetwork = { navController.navigate(Screen.SettingsNetwork.route) },
+                    onNavigateToAdvanced = { navController.navigate(Screen.SettingsAdvanced.route) },
                     onNavigateToAbout = { navController.navigate(Screen.SettingsAbout.route) }
                 )
             }
+
+            // 4 Home Shortcuts
+            composable(Screen.TopTracks.route) {
+                SongListSubScreen(
+                    title = "Top tracks",
+                    songs = SampleData.songs.sortedByDescending { it.durationSeconds },
+                    playerViewModel = playerViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.LastAdded.route) {
+                SongListSubScreen(
+                    title = "Last added",
+                    songs = SampleData.songs.reversed(),
+                    playerViewModel = playerViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.History.route) {
+                SongListSubScreen(
+                    title = "History",
+                    songs = SampleData.songs,
+                    playerViewModel = playerViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.Favorites.route) {
+                SongListSubScreen(
+                    title = "Favorites",
+                    songs = SampleData.songs.filter { it.isFavorite },
+                    playerViewModel = playerViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            // 9 Settings Sub-screens
             composable(Screen.SettingsAppearance.route) {
                 AppearanceSettingsScreen(
+                    settingsViewModel = settingsViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.SettingsNowPlaying.route) {
+                NowPlayingSettingsScreen(
+                    settingsViewModel = settingsViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.SettingsLyrics.route) {
+                LyricsSettingsScreen(
                     settingsViewModel = settingsViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
@@ -193,16 +304,29 @@ fun MainScaffold(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
+            composable(Screen.SettingsLibrary.route) {
+                LibrarySettingsScreen(
+                    settingsViewModel = settingsViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
             composable(Screen.SettingsDownloads.route) {
                 DownloadsSettingsScreen(
                     settingsViewModel = settingsViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-            composable(Screen.SettingsLibrary.route) {
-                LibrarySettingsScreen(
+            composable(Screen.SettingsNetwork.route) {
+                NetworkSettingsScreen(
                     settingsViewModel = settingsViewModel,
                     onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.SettingsAdvanced.route) {
+                AdvancedSettingsScreen(
+                    settingsViewModel = settingsViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onRunSetupAgain = { navController.navigate(Screen.SetupWizard.route) }
                 )
             }
             composable(Screen.SettingsAbout.route) {
@@ -211,6 +335,7 @@ fun MainScaffold(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
+
             composable(Screen.NowPlaying.route) {
                 NowPlayingScreen(
                     playerViewModel = playerViewModel,

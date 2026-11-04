@@ -41,21 +41,57 @@ sealed class Screen(
         route = "equalizer",
         title = "Equalizer"
     )
+
+    // Home 4 Shortcut List Pages
+    data object TopTracks : Screen(
+        route = "top_tracks",
+        title = "Top tracks"
+    )
+    data object LastAdded : Screen(
+        route = "last_added",
+        title = "Last added"
+    )
+    data object History : Screen(
+        route = "history",
+        title = "History"
+    )
+    data object Favorites : Screen(
+        route = "favorites",
+        title = "Favorites"
+    )
+
+    // Settings Sub-screens
     data object SettingsAppearance : Screen(
         route = "settings_appearance",
         title = "Appearance"
+    )
+    data object SettingsNowPlaying : Screen(
+        route = "settings_now_playing",
+        title = "Now playing"
+    )
+    data object SettingsLyrics : Screen(
+        route = "settings_lyrics",
+        title = "Lyrics"
     )
     data object SettingsPlayback : Screen(
         route = "settings_playback",
         title = "Playback"
     )
+    data object SettingsLibrary : Screen(
+        route = "settings_library",
+        title = "Library"
+    )
     data object SettingsDownloads : Screen(
         route = "settings_downloads",
         title = "Downloads"
     )
-    data object SettingsLibrary : Screen(
-        route = "settings_library",
-        title = "Library"
+    data object SettingsNetwork : Screen(
+        route = "settings_network",
+        title = "Network"
+    )
+    data object SettingsAdvanced : Screen(
+        route = "settings_advanced",
+        title = "Advanced"
     )
     data object SettingsAbout : Screen(
         route = "settings_about",
@@ -70,6 +106,5 @@ sealed class Screen(
 val BottomNavItems = listOf(
     Screen.Home,
     Screen.Library,
-    Screen.Downloads,
-    Screen.Settings
+    Screen.Downloads
 )

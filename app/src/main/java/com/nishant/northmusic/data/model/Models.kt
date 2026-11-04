@@ -19,6 +19,36 @@ data class Song(
         }
 }
 
+data class Album(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val songCount: Int,
+    val year: Int,
+    val colorSeed: Long = 0xFF2DD4BF
+)
+
+data class Artist(
+    val id: String,
+    val name: String,
+    val songCount: Int,
+    val albumCount: Int,
+    val colorSeed: Long = 0xFF2DD4BF
+)
+
+data class Playlist(
+    val id: String,
+    val title: String,
+    val songCount: Int,
+    val colorSeed: Long = 0xFF2DD4BF
+)
+
+data class FolderItem(
+    val name: String,
+    val path: String,
+    val songCount: Int
+)
+
 enum class DownloadStatus {
     DOWNLOADING,
     COMPLETED,
@@ -44,6 +74,7 @@ enum class LibraryFilter(val label: String) {
     SONGS("Songs"),
     ALBUMS("Albums"),
     ARTISTS("Artists"),
+    PLAYLISTS("Playlists"),
     FOLDERS("Folders")
 }
 
@@ -119,14 +150,14 @@ data class EqualizerState(
             isAutoMode = true,
             selectedPreset = EqualizerPreset.FLAT,
             bandGains = listOf(0f, 0f, 0f, 0f, 0f),
-            bassBoostPercent = 0.20f,
-            virtualizerPercent = 0.15f
+            bassBoostPercent = 0.0f,
+            virtualizerPercent = 0.0f
         ),
         AudioOutputDevice.SPEAKER to DeviceProfile(
             isEnabled = true,
             isAutoMode = true,
             selectedPreset = EqualizerPreset.VOCAL,
-            bandGains = listOf(-2f, 1f, 4f, 3f, 1f),
+            bandGains = listOf(-2f, 1f, 4.5f, 3f, 1f),
             bassBoostPercent = 0.10f,
             virtualizerPercent = 0.0f
         )
@@ -167,19 +198,74 @@ data class MetadataFixState(
 )
 
 data class SettingsState(
+    // 1. Navigation
+    val holdTabToSearch: Boolean = false,
+    val rememberLastPage: Boolean = true,
+    val lastOpenedRoute: String = "home",
+
+    // 2. Appearance
     val dynamicColor: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.DARK,
     val accentColor: AccentColor = AccentColor.TEAL,
+    val largerHeaderImage: Boolean = false,
+    val tabTitlesMode: String = "Always", // "Always", "Selected", "Never"
+    val scrollingTextForLongTitles: Boolean = true,
+
+    // 3. Now Playing
+    val animateControls: Boolean = true,
+    val extraControlsMiniPlayer: Boolean = false,
+    val adaptiveControls: Boolean = true,
+    val squigglySeekBar: Boolean = false, // default off
+    val preferRemainingTime: Boolean = false,
+
+    // 4. Lyrics
+    val showTranslation: Boolean = false,
+    val showTransliteration: Boolean = false,
+    val centerCurrentLine: Boolean = true,
+    val centerLyricsHorizontally: Boolean = true,
+    val lyricsFontSize: Float = 18f,
+    val customFont: String = "Default",
+
+    // 5. Playback
     val gaplessPlayback: Boolean = true,
     val audioNormalization: Boolean = true,
     val highQualityAudio: Boolean = true,
-    val wifiOnlyDownloads: Boolean = true,
-    val maxParallelDownloads: Int = 3,
-    val saveFolder: String = "/storage/emulated/0/Music/Downloads",
-    val fileNamingFormat: String = "{artist} - {title}",
+    val replayGainMode: String = "None", // "Album", "Track", "None"
+    val headphonesResumeOnConnect: Boolean = false,
+    val headphonesPauseOnDisconnect: Boolean = true,
+    val bluetoothResumeOnConnect: Boolean = false,
+    val bluetoothPauseOnDisconnect: Boolean = true,
+    val audioFocus: Boolean = true,
+
+    // 6. Library
+    val libraryCategories: List<String> = listOf("Songs", "Albums", "Artists", "Playlists", "Folders"),
+    val minSongDurationSeconds: Int = 15,
+    val artistMinSongCount: Int = 1,
+    val albumMinSongCount: Int = 1,
+    val foldersBlacklist: List<String> = emptyList(),
+    val ignoreArticlesWhenSorting: Boolean = true,
+    val sendDeletedToTrash: Boolean = true,
+    val recordListeningHistory: Boolean = true,
+    val historyIntervalDays: Int = 30,
+    val lastAddedIntervalDays: Int = 14,
     val ignoreShortTracks: Boolean = true,
     val musicFolders: List<String> = listOf("/storage/emulated/0/Music", "/storage/emulated/0/Download"),
     val isRescanning: Boolean = false,
-    val setupDone: Boolean = false,
-    val metadataFixState: MetadataFixState = MetadataFixState()
+    val metadataFixState: MetadataFixState = MetadataFixState(),
+
+    // 7. Downloads
+    val saveFolder: String = "/storage/emulated/0/Music/Downloads",
+    val wifiOnlyDownloads: Boolean = true,
+    val maxParallelDownloads: Int = 3,
+    val fileNamingFormat: String = "{artist} - {title}",
+
+    // 8. Network
+    val onlineMetadataLookup: Boolean = true,
+    val lyricsProviders: String = "LRC Lib, NetEase",
+
+    // 9. Advanced & Setup
+    val appLanguage: String = "System default",
+    val backupAndRestoreInfo: String = "No backup found",
+    val rotationLock: Boolean = false,
+    val setupDone: Boolean = false
 )

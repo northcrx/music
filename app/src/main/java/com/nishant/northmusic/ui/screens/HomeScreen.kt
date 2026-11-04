@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,21 +29,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ElectricBolt
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NorthWest
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SwapVert
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,12 +57,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.nishant.northmusic.data.model.Album
 import com.nishant.northmusic.data.model.SampleData
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import com.nishant.northmusic.ui.components.ArtworkPlaceholder
@@ -78,6 +80,8 @@ import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
 fun HomeScreen(
     homeViewModel: HomeViewModel,
     playerViewModel: PlayerViewModel,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToShortcut: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by homeViewModel.uiState.collectAsState()
@@ -91,23 +95,11 @@ fun HomeScreen(
         mutableStateListOf("The Weeknd", "Daft Punk", "Starboy", "Synthwave", "M83")
     }
 
-    var selectedFilterChip by remember { mutableStateOf("All") }
-    val homeFilterChips = listOf("All", "Most played", "Recently added", "Favorites")
-
     // Intercept back press when search mode is active
     BackHandler(enabled = isSearchActive) {
         isSearchActive = false
         searchQuery = ""
         focusManager.clearFocus()
-    }
-
-    val displayedMusic = remember(selectedFilterChip) {
-        when (selectedFilterChip) {
-            "Most played" -> SampleData.songs.sortedByDescending { it.durationSeconds }
-            "Recently added" -> SampleData.songs.reversed()
-            "Favorites" -> SampleData.songs.filter { it.isFavorite }
-            else -> SampleData.songs
-        }
     }
 
     val liveSearchResults = remember(searchQuery, searchCategory) {
@@ -132,46 +124,21 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // Top Header: Empty 40dp logo slot + Inline Search Bar (hint: "Search your music")
+        // TOP HEADER (80/20): 80% search bar + 20% settings gear icon button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            if (isSearchActive) {
-                IconButton(
-                    onClick = {
-                        isSearchActive = false
-                        searchQuery = ""
-                        focusManager.clearFocus()
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Exit search",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            } else {
-                // Empty 40dp square slot placeholder for app logo
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                )
-            }
-
-            // Real inline search text bar
+            // 80% width search bar
             Surface(
                 shape = PillShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
+                    .weight(0.80f)
+                    .height(50.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -180,10 +147,16 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = "Search",
+                        imageVector = if (isSearchActive) Icons.AutoMirrored.Rounded.ArrowBack else Icons.Rounded.Search,
+                        contentDescription = if (isSearchActive) "Exit search" else "Search",
                         tint = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable(enabled = isSearchActive) {
+                                isSearchActive = false
+                                searchQuery = ""
+                                focusManager.clearFocus()
+                            }
                     )
 
                     Spacer(modifier = Modifier.width(10.dp))
@@ -222,15 +195,10 @@ fun HomeScreen(
                         )
                     }
 
-                    if (searchQuery.isNotEmpty() || isSearchActive) {
+                    if (searchQuery.isNotEmpty()) {
                         IconButton(
                             onClick = {
-                                if (searchQuery.isNotEmpty()) {
-                                    searchQuery = ""
-                                } else {
-                                    isSearchActive = false
-                                    focusManager.clearFocus()
-                                }
+                                searchQuery = ""
                             },
                             modifier = Modifier.size(32.dp)
                         ) {
@@ -241,6 +209,44 @@ fun HomeScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                         }
+                    } else {
+                        IconButton(
+                            onClick = { /* TODO: Voice search */ },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Mic,
+                                contentDescription = "Voice search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 20% width settings gear button
+            Box(
+                modifier = Modifier
+                    .weight(0.20f)
+                    .height(50.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.size(50.dp)
+                ) {
+                    IconButton(
+                        onClick = onNavigateToSettings,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
@@ -374,7 +380,8 @@ fun HomeScreen(
                                         recentSearches.add(0, song.title)
                                     }
                                     playerViewModel.playSong(song)
-                                }
+                                },
+                                onOptionsClick = { /* TODO: Song context menu */ }
                             )
                         }
                     }
@@ -385,225 +392,201 @@ fun HomeScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = BottomListScrollPadding),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Filter Chips Row ("All", "Most played", "Recently added", "Favorites")
+                // 1. Row of 4 circular shortcut buttons with labels: Top tracks, Last added, History, Favorites
                 item {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, top = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.Top
                     ) {
-                        items(homeFilterChips) { chip ->
-                            val isSelected = chip == selectedFilterChip
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { selectedFilterChip = chip },
-                                label = {
-                                    Text(
-                                        text = chip,
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                },
-                                shape = PillShape,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                border = null
+                        HomeShortcutButton(
+                            icon = Icons.Rounded.TrendingUp,
+                            label = "Top tracks",
+                            onClick = { onNavigateToShortcut("top_tracks") }
+                        )
+                        HomeShortcutButton(
+                            icon = Icons.Rounded.Schedule,
+                            label = "Last added",
+                            onClick = { onNavigateToShortcut("last_added") }
+                        )
+                        HomeShortcutButton(
+                            icon = Icons.Rounded.History,
+                            label = "History",
+                            onClick = { onNavigateToShortcut("history") }
+                        )
+                        HomeShortcutButton(
+                            icon = Icons.Rounded.Favorite,
+                            label = "Favorites",
+                            onClick = { onNavigateToShortcut("favorites") }
+                        )
+                    }
+                }
+
+                // 2. "For you" section: a mosaic grid of rounded album artwork tiles with one accent colored tile "Shuffle your music"
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Text(
+                            text = "For you",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Tile 1: Accent colored tile "Shuffle your music"
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(140.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .clickable {
+                                        homeViewModel.onShuffleMixClick()
+                                        SampleData.songs.shuffled().firstOrNull()?.let { playerViewModel.playSong(it) }
+                                        playerViewModel.toggleShuffle()
+                                    },
+                                shape = RoundedCornerShape(20.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
+                                        modifier = Modifier.size(38.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Shuffle,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "Shuffle your music",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                        Text(
+                                            text = "Personalized mix",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Tile 2: First album
+                            val album1 = SampleData.albums.getOrNull(0) ?: SampleData.albums.first()
+                            ForYouAlbumTile(
+                                album = album1,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(140.dp),
+                                onClick = {
+                                    val song = SampleData.songs.firstOrNull { it.album == album1.title } ?: SampleData.songs.first()
+                                    playerViewModel.playSong(song)
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            val album2 = SampleData.albums.getOrNull(1) ?: SampleData.albums.first()
+                            ForYouAlbumTile(
+                                album = album2,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(140.dp),
+                                onClick = {
+                                    val song = SampleData.songs.firstOrNull { it.album == album2.title } ?: SampleData.songs.first()
+                                    playerViewModel.playSong(song)
+                                }
+                            )
+
+                            val album3 = SampleData.albums.getOrNull(2) ?: SampleData.albums.first()
+                            ForYouAlbumTile(
+                                album = album3,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(140.dp),
+                                onClick = {
+                                    val song = SampleData.songs.firstOrNull { it.album == album3.title } ?: SampleData.songs.first()
+                                    playerViewModel.playSong(song)
+                                }
                             )
                         }
                     }
                 }
 
-                // Hero Callout: Your Night Mix
-                item {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainer
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.ElectricBolt,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Text(
-                                            text = "ENDLESS ADAPTIVE FLOW",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Your Night Mix",
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "38 tracks tuned to your cadence",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                Row(horizontalArrangement = Arrangement.spacedBy((-14).dp)) {
-                                    ArtworkPlaceholder(size = 38.dp, colorSeed = 0xFF0D9488)
-                                    ArtworkPlaceholder(size = 38.dp, colorSeed = 0xFFB91C1C)
-                                    ArtworkPlaceholder(size = 38.dp, colorSeed = 0xFF15803D)
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(18.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Button(
-                                    onClick = {
-                                        homeViewModel.onShuffleMixClick()
-                                        displayedMusic.firstOrNull()?.let { playerViewModel.playSong(it) }
-                                        playerViewModel.toggleShuffle()
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(52.dp),
-                                    shape = PillShape,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Shuffle,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Shuffle My Mix",
-                                        style = MaterialTheme.typography.labelLarge
-                                    )
-                                }
-
-                                FilledTonalIconButton(
-                                    onClick = { homeViewModel.onTuneMixClick() },
-                                    modifier = Modifier.size(52.dp),
-                                    shape = CircleShape,
-                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurface
-                                    )
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Tune,
-                                        contentDescription = "Tune Mix"
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Recently Played Section (Artwork is rounded square, title/artist BELOW outside any clip)
+                // 3. "Listen now": horizontal album carousel. Title and artist go below artwork as plain text, not clipped
                 item {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = "Recently played",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary)
-                                )
-                            }
-
-                            Surface(
-                                shape = PillShape,
-                                color = MaterialTheme.colorScheme.surfaceContainer,
-                                modifier = Modifier.clickable { /* TODO: See all */ }
-                            ) {
-                                Text(
-                                    text = "See all",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-
+                        Text(
+                            text = "Listen now",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                        )
                         Spacer(modifier = Modifier.height(10.dp))
 
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            items(uiState.recentlyPlayed) { song ->
+                            items(SampleData.albums, key = { it.id }) { album ->
                                 Column(
                                     modifier = Modifier
                                         .width(136.dp)
-                                        .clickable { playerViewModel.playSong(song) }
+                                        .clip(RoundedCornerShape(18.dp))
+                                        .clickable {
+                                            val song = SampleData.songs.firstOrNull { it.album == album.title } ?: SampleData.songs.first()
+                                            playerViewModel.playSong(song)
+                                        }
                                 ) {
-                                    // ONLY the artwork is clipped as a rounded square
                                     ArtworkPlaceholder(
+                                        colorSeed = album.colorSeed,
                                         size = 136.dp,
-                                        colorSeed = song.colorSeed,
                                         shape = RoundedCornerShape(18.dp),
-                                        iconSize = 44.dp
+                                        modifier = Modifier.size(136.dp)
                                     )
 
-                                    // 8dp gap
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    // Plain text BELOW it, outside any clip, max 1 line each
                                     Text(
-                                        text = song.title,
-                                        style = MaterialTheme.typography.titleMedium,
+                                        text = album.title,
+                                        style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = song.artist,
+                                        text = album.artist,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -615,74 +598,119 @@ fun HomeScreen(
                     }
                 }
 
-                // Your Music Section Header
+                // 4. "Your music": compact song rows
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 2.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = "Your music",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Surface(
-                                    shape = PillShape,
-                                    color = MaterialTheme.colorScheme.surfaceContainerHighest
-                                ) {
-                                    Text(
-                                        text = "${displayedMusic.size} tracks",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Your music",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier
-                                    .clip(PillShape)
-                                    .clickable { /* TODO: Sort recent */ }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = selectedFilterChip,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Icon(
-                                    imageVector = Icons.Rounded.SwapVert,
-                                    contentDescription = "Sort",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
+                        SampleData.songs.forEach { song ->
+                            val isCurrentSong = playerState.currentSong?.id == song.id
+                            SongItem(
+                                song = song,
+                                isPlaying = isCurrentSong && playerState.isPlaying,
+                                onClick = { playerViewModel.playSong(song) },
+                                onOptionsClick = { /* TODO: Song context menu */ }
+                            )
                         }
                     }
                 }
+            }
+        }
+    }
+}
 
-                // Flat compact rows (64dp tall), no card background, no gap between rows
-                items(
-                    items = displayedMusic,
-                    key = { it.id }
-                ) { song ->
-                    SongItem(
-                        song = song,
-                        isPlaying = playerState.currentSong?.id == song.id && playerState.isPlaying,
-                        onClick = { playerViewModel.playSong(song) }
+@Composable
+private fun HomeShortcutButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.size(56.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun ForYouAlbumTile(
+    album: Album,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ArtworkPlaceholder(
+                colorSeed = album.colorSeed,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Scrim overlay at the bottom for readability
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Column {
+                    Text(
+                        text = album.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = album.artist,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

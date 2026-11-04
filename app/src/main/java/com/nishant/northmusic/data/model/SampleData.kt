@@ -114,6 +114,42 @@ object SampleData {
         )
     )
 
+    val albums: List<Album> = listOf(
+        Album("a1", "Starboy", "The Weeknd ft. Daft Punk", 18, 2016, 0xFF0D9488),
+        Album("a2", "After Hours", "The Weeknd", 14, 2020, 0xFFB91C1C),
+        Album("a3", "Hurry Up, We're Dreaming", "M83", 22, 2011, 0xFF15803D),
+        Album("a4", "Kinetic Void", "Solaris Echo", 8, 2023, 0xFF0369A1),
+        Album("a5", "OutRun", "Kavinsky", 13, 2013, 0xFF0E7490),
+        Album("a6", "Random Access Memories", "Daft Punk", 13, 2013, 0xFF4338CA),
+        Album("a7", "Salad Days", "Mac DeMarco", 11, 2014, 0xFF0F766E),
+        Album("a8", "Gunship", "Gunship", 10, 2015, 0xFFBE185D)
+    )
+
+    val artists: List<Artist> = listOf(
+        Artist("ar1", "The Weeknd", 45, 4, 0xFF0D9488),
+        Artist("ar2", "Daft Punk", 32, 4, 0xFF4338CA),
+        Artist("ar3", "M83", 24, 3, 0xFF15803D),
+        Artist("ar4", "Kavinsky", 18, 2, 0xFF0E7490),
+        Artist("ar5", "Solaris Echo", 12, 1, 0xFF0369A1),
+        Artist("ar6", "Gunship", 15, 2, 0xFFBE185D),
+        Artist("ar7", "Mac DeMarco", 20, 3, 0xFF0F766E)
+    )
+
+    val playlists: List<Playlist> = listOf(
+        Playlist("p1", "Favorites", 28, 0xFFE11D48),
+        Playlist("p2", "Late Night Cruise", 34, 0xFF0D9488),
+        Playlist("p3", "Synthwave Essentials", 42, 0xFF8B5CF6),
+        Playlist("p4", "Deep Focus & Ambient", 19, 0xFF0284C7),
+        Playlist("p5", "High Energy Workout", 25, 0xFFF97316)
+    )
+
+    val folders: List<FolderItem> = listOf(
+        FolderItem("Music", "/storage/emulated/0/Music", 142),
+        FolderItem("Downloads", "/storage/emulated/0/Download", 38),
+        FolderItem("Recordings", "/storage/emulated/0/Recordings", 12),
+        FolderItem("Podcasts", "/storage/emulated/0/Podcasts", 8)
+    )
+
     // Generate 200 items for smooth scrolling download performance tests
     val downloadingItems: List<DownloadItem> = (1..30).map { i ->
         DownloadItem(

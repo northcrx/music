@@ -51,8 +51,8 @@ import com.nishant.northmusic.data.model.PlayerState
 /**
  * Floating Mini Player Pill:
  * - 22dp corner radius, 14dp horizontal margin, levitating above bottom nav dock.
- * - Nocturnal Semi-Transparent Glass aesthetic: Deep dark obsidian translucent background with frosted hairline border.
- * - Solid white circular play/pause control with vibrant blue progress ring.
+ * - Nocturnal Semi-Transparent Dark Glass aesthetic with hairline dark-supported outline.
+ * - Minimalist transparent play/pause button with white icon and circular line completing as music plays.
  * - Crisp typography and controls (Title in white, artist in slate, favorite & skip).
  * - Gestures: Tap opens Now Playing; swipe left/right skips track; swipe down hides it.
  */
@@ -78,19 +78,19 @@ fun MiniPlayer(
         var totalDragX by remember { mutableFloatStateOf(0f) }
         var totalDragY by remember { mutableFloatStateOf(0f) }
 
-        // Nocturnal semi-transparent dark glass background
-        val miniPlayerBackground = Color(0xDD0F172A)
-        val frostedBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+        // Transparent dark background supported by subtle hairline border
+        val miniPlayerBackground = Color(0xCC0D131F)
+        val frostedBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
 
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
                 .shadow(
-                    elevation = 8.dp,
+                    elevation = 6.dp,
                     shape = RoundedCornerShape(22.dp),
                     ambientColor = Color.Black.copy(alpha = 0.35f),
-                    spotColor = Color.Black.copy(alpha = 0.5f)
+                    spotColor = Color.Black.copy(alpha = 0.45f)
                 )
                 .clip(RoundedCornerShape(22.dp))
                 .clickable(onClick = onTap)
@@ -179,19 +179,19 @@ fun MiniPlayer(
 
                     Spacer(modifier = Modifier.width(4.dp))
 
-                    // Play / Pause Button with solid white circle and vibrant blue progress ring
+                    // Play / Pause Button: Transparent background, white icon, circular progress line
                     ProgressRingIconButton(
                         progress = playerState.progress,
                         icon = if (playerState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = if (playerState.isPlaying) "Pause" else "Play",
                         onClick = onPlayPauseClick,
-                        size = 44.dp,
-                        iconSize = 22.dp,
-                        strokeWidth = 3.dp,
-                        containerColor = Color.White,
-                        iconTint = Color(0xFF0F172A),
+                        size = 46.dp,
+                        iconSize = 24.dp,
+                        strokeWidth = 2.5.dp,
+                        containerColor = Color.Transparent,
+                        iconTint = Color.White,
                         ringColor = Color(0xFF3B82F6),
-                        trackColor = Color.White.copy(alpha = 0.22f)
+                        trackColor = Color.White.copy(alpha = 0.18f)
                     )
 
                     Spacer(modifier = Modifier.width(4.dp))

@@ -2,7 +2,6 @@ package com.nishant.northmusic.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.TextButton
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import androidx.compose.animation.AnimatedVisibility
@@ -299,68 +298,6 @@ fun DownloadsScreen(
                 )
             }
 
-            // Quick Paste URL Download Bar in Upper Section
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .clickable { showAddUrlSheet = true },
-                shape = PillShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Link,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Paste Spotify, YouTube, or JioSaavn link...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Surface(
-                        shape = PillShape,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                        modifier = Modifier.clickable {
-                            val clipText = clipboardManager.getText()?.text
-                            if (!clipText.isNullOrBlank()) {
-                                urlInputText = clipText
-                            }
-                            showAddUrlSheet = true
-                        }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.ContentPaste,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Paste",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-            }
-
             // Summary card (same style as Home tiles: surfaceContainer, 24dp corners, 16dp padding)
             Card(
                 modifier = Modifier
@@ -474,12 +411,12 @@ fun DownloadsScreen(
                 }
             }
 
-            // List of flat download items with 88dp bottom contentPadding
+            // List of flat download items
             if (uiState.currentList.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(32.dp),
+                        .padding(start = 32.dp, end = 32.dp, top = 16.dp, bottom = BottomListScrollPadding),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -489,13 +426,15 @@ fun DownloadsScreen(
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.size(64.dp)
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clickable { showAddUrlSheet = true }
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Rounded.DownloadForOffline,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    contentDescription = "Add URL",
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -513,7 +452,7 @@ fun DownloadsScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Tap 'Paste link' above to download audio streams directly.",
+                            text = "Tap the link button in the top bar to download audio streams directly.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center

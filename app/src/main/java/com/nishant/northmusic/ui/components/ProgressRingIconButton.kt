@@ -1,5 +1,8 @@
 package com.nishant.northmusic.ui.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -10,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,8 +37,8 @@ fun ProgressRingIconButton(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 48.dp,
-    strokeWidth: Dp = 4.dp,
+    size: Dp = 46.dp,
+    strokeWidth: Dp = 2.5.dp,
     iconSize: Dp = 24.dp,
     containerColor: Color = Color.Transparent,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -44,6 +48,13 @@ fun ProgressRingIconButton(
     contentDescription: String? = null,
     enabled: Boolean = true
 ) {
+    val cleanProgress = progress.coerceIn(0f, 1f)
+    val animatedProgress by animateFloatAsState(
+        targetValue = cleanProgress,
+        animationSpec = tween(durationMillis = 350, easing = LinearEasing),
+        label = "ProgressRingAnimation"
+    )
+
     Box(
         modifier = modifier
             .size(size)
@@ -69,7 +80,7 @@ fun ProgressRingIconButton(
                 )
             }
 
-            // Background circular track
+            // Background circular track line
             drawCircle(
                 color = trackColor,
                 radius = radius,
@@ -78,8 +89,7 @@ fun ProgressRingIconButton(
             )
 
             // Progress arc sweeping clockwise from top (-90 degrees)
-            val cleanProgress = progress.coerceIn(0f, 1f)
-            val sweepAngle = cleanProgress * 360f
+            val sweepAngle = animatedProgress * 360f
             if (sweepAngle > 0f) {
                 drawArc(
                     color = ringColor,

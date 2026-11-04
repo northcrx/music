@@ -302,16 +302,21 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     fun skipPrevious() = skipToPrevious()
 
     fun seekTo(seconds: Int) {
+        val controller = mediaController
+        val targetMs = seconds * 1000L
+        controller?.seekTo(targetMs)
         _playerState.update { it.copy(currentPositionSeconds = seconds) }
-        mediaController?.seekTo(seconds * 1000L)
-        _playerState.value.currentSong?.let { song ->
-            viewModelScope.launch {
-                statsDb.saveLastPosition(song.id, seconds)
-            }
+    }
+
+    fun playQueueIndex(index: Int) {
+        val q = _queue.value
+        if (index in q.indices) {
+            val song = q[index]
+            playSong(song, q)
         }
     }
 
-    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+    fun reorderQueue(fromIndex: Int, toIndex: Int) {
         val currentList = _queue.value.toMutableList()
         if (fromIndex in currentList.indices && toIndex in currentList.indices) {
             val item = currentList.removeAt(fromIndex)
@@ -320,6 +325,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             mediaController?.moveMediaItem(fromIndex, toIndex)
         }
     }
+
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) = reorderQueue(fromIndex, toIndex)
 
     fun removeFromQueue(index: Int) {
         val currentList = _queue.value.toMutableList()
@@ -349,12 +356,25 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 val controller = mediaController
                 if (controller != null && controller.isPlaying) {
                     val posSec = (controller.currentPosition / 1000).toInt()
-                    _playerState.update { it.copy(currentPositionSeconds = posSec) }
+                    val durMs = controller.duration
+                    val durSec = if (durMs > 0) (durMs / 1000).toInt() else 0
+                    _playerState.update { state ->
+                        val current = state.currentSong
+                        val updatedSong = if (current != null && current.durationSeconds <= 0 && durSec > 0) {
+                            current.copy(durationSeconds = durSec)
+                        } else {
+                            current
+                        }
+                        state.copy(
+                            currentPositionSeconds = posSec,
+                            currentSong = updatedSong
+                        )
+                    }
                     _playerState.value.currentSong?.let { song ->
                         statsDb.saveLastPosition(song.id, posSec)
                     }
                 }
-                delay(1000L)
+                delay(500L)
             }
         }
     }

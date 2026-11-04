@@ -1,5 +1,9 @@
 package com.nishant.northmusic.navigation
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.nishant.northmusic.util.PermissionUtils
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -87,6 +91,22 @@ fun MainScaffold(
     val homeUiState by homeViewModel.uiState.collectAsState()
     val downloadsUiState by downloadsViewModel.uiState.collectAsState()
     val settingsState by settingsViewModel.settingsState.collectAsState()
+
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        if (PermissionUtils.hasAudioPermission(context)) {
+            homeViewModel.rescan()
+            libraryViewModel.scanMusic()
+        }
+    }
+
+    LaunchedEffect(settingsState.setupDone) {
+        if (settingsState.setupDone && !PermissionUtils.hasAudioPermission(context)) {
+            permissionLauncher.launch(PermissionUtils.getPermissionsToRequest())
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()

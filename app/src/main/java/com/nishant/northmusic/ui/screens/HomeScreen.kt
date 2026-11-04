@@ -1,5 +1,19 @@
 package com.nishant.northmusic.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.rounded.AudioFile
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.nishant.northmusic.util.PermissionUtils
+
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -83,6 +97,35 @@ fun HomeScreen(
     val uiState by homeViewModel.uiState.collectAsState()
     val playerState by playerViewModel.playerState.collectAsState()
     val focusManager = LocalFocusManager.current
+
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasAudioPermission by remember { mutableStateOf(PermissionUtils.hasAudioPermission(context)) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        hasAudioPermission = PermissionUtils.hasAudioPermission(context)
+        if (hasAudioPermission) {
+            homeViewModel.rescan()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val granted = PermissionUtils.hasAudioPermission(context)
+                hasAudioPermission = granted
+                if (granted && uiState.yourMusic.isEmpty()) {
+                    homeViewModel.rescan()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     var searchQuery by remember { mutableStateOf("") }
     var searchCategory by remember { mutableStateOf("Songs") }
@@ -636,17 +679,64 @@ fun HomeScreen(
 
                         val displaySongs = uiState.yourMusic.take(8)
                         if (displaySongs.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp, horizontal = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (uiState.isScanning) "Scanning your audio files..." else "No songs found on your device yet",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            if (!hasAudioPermission) {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(20.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.AudioFile,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                        Text(
+                                            text = "Permission required to access music",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Text(
+                                            text = "North Music needs permission to scan and play audio tracks stored on this device.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Button(
+                                            onClick = {
+                                                permissionLauncher.launch(PermissionUtils.getPermissionsToRequest())
+                                            },
+                                            shape = PillShape,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(44.dp)
+                                        ) {
+                                            Text("Grant access")
+                                        }
+                                    }
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp, horizontal = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (uiState.isScanning) "Scanning your audio files..." else "No songs found on your device yet",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         } else {
                             displaySongs.forEach { song ->

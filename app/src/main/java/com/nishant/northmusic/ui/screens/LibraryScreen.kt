@@ -1,5 +1,14 @@
 package com.nishant.northmusic.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.rounded.AudioFile
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.nishant.northmusic.util.PermissionUtils
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -65,6 +74,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -115,6 +125,40 @@ fun LibraryScreen(
 ) {
     val uiState by libraryViewModel.uiState.collectAsState()
     val playerState by playerViewModel.playerState.collectAsState()
+
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasPermission by remember { mutableStateOf(PermissionUtils.hasAudioPermission(context)) }
+    var permissionDeniedOnce by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        val granted = PermissionUtils.hasAudioPermission(context)
+        hasPermission = granted
+        if (granted) {
+            libraryViewModel.scanMusic()
+        } else {
+            permissionDeniedOnce = true
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val granted = PermissionUtils.hasAudioPermission(context)
+                hasPermission = granted
+                if (granted && uiState.isLibraryEmpty) {
+                    libraryViewModel.scanMusic()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
 
     val alphabet = remember {
         listOf("#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z")
@@ -323,6 +367,14 @@ fun LibraryScreen(
                 if (uiState.isLibraryEmpty) {
                     EmptyLibraryContent(
                         isScanning = uiState.isScanning,
+                        hasPermission = hasPermission,
+                        permissionDeniedOnce = permissionDeniedOnce,
+                        onRequestPermission = {
+                            permissionLauncher.launch(PermissionUtils.getPermissionsToRequest())
+                        },
+                        onOpenSettings = {
+                            PermissionUtils.openAppSettings(context)
+                        },
                         onScanClick = { libraryViewModel.scanMusic() }
                     )
                 } else {
@@ -829,6 +881,10 @@ private fun EmptyCategoryNotice(message: String) {
 @Composable
 private fun EmptyLibraryContent(
     isScanning: Boolean,
+    hasPermission: Boolean,
+    permissionDeniedOnce: Boolean,
+    onRequestPermission: () -> Unit,
+    onOpenSettings: () -> Unit,
     onScanClick: () -> Unit
 ) {
     Box(
@@ -857,7 +913,7 @@ private fun EmptyLibraryContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ManageSearch,
+                        imageVector = if (!hasPermission) Icons.Rounded.AudioFile else Icons.AutoMirrored.Rounded.ManageSearch,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(38.dp)
@@ -867,7 +923,7 @@ private fun EmptyLibraryContent(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "Looking for local music?",
+                    text = if (!hasPermission) "Music permission required" else "Looking for local music?",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -877,7 +933,11 @@ private fun EmptyLibraryContent(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "We couldn't detect any audio tracks in your designated storage directories.",
+                    text = if (!hasPermission) {
+                        "North Music needs permission to read audio files so you can listen to your local tracks."
+                    } else {
+                        "We couldn't detect any audio tracks in your designated storage directories."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -886,34 +946,69 @@ private fun EmptyLibraryContent(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = onScanClick,
-                    enabled = !isScanning,
-                    shape = PillShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                ) {
-                    if (isScanning) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Scanning directories...")
-                    } else {
+                if (!hasPermission) {
+                    Button(
+                        onClick = onRequestPermission,
+                        shape = PillShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
                         Icon(
-                            imageVector = Icons.Rounded.MusicNote,
+                            imageVector = Icons.Rounded.AudioFile,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Scan music")
+                        Text("Grant access")
+                    }
+
+                    if (permissionDeniedOnce) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedButton(
+                            onClick = onOpenSettings,
+                            shape = PillShape,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                        ) {
+                            Text("Open app settings")
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onScanClick,
+                        enabled = !isScanning,
+                        shape = PillShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        if (isScanning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Scanning directories...")
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.MusicNote,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Scan music")
+                        }
                     }
                 }
             }

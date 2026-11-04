@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SettingsRepository.init(this)
 
         setContent {
             // Read only granular theme properties to avoid whole-app recompositions

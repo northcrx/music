@@ -332,5 +332,5 @@ data class SettingsState(
     val rotationLock: Boolean = lockScreenRotation,
     val backupAndRestoreInfo: String = "No backup found",
     val lastBackupDate: String? = null,
-    val setupDone: Boolean = true
+    val setupDone: Boolean = false
 )

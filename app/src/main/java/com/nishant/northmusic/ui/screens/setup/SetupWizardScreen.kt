@@ -83,6 +83,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.nishant.northmusic.data.repository.MusicRepository
 import com.nishant.northmusic.data.model.AccentColor
 import com.nishant.northmusic.data.model.ThemeMode
 import com.nishant.northmusic.ui.theme.PillShape
@@ -98,6 +99,7 @@ fun SetupWizardScreen(
     modifier: Modifier = Modifier
 ) {
     val state by settingsViewModel.settingsState.collectAsState()
+    val context = LocalContext.current
     val pagerState = rememberPagerState(pageCount = { 5 })
     val scope = rememberCoroutineScope()
 
@@ -134,6 +136,7 @@ fun SetupWizardScreen(
                 TextButton(
                     onClick = {
                         settingsViewModel.setSetupDone(true)
+                        MusicRepository.getInstance(context).rescan()
                         onComplete()
                     }
                 ) {
@@ -195,6 +198,7 @@ fun SetupWizardScreen(
                         }
                     } else {
                         settingsViewModel.setSetupDone(true)
+                        MusicRepository.getInstance(context).rescan()
                         onComplete()
                     }
                 },
@@ -360,6 +364,23 @@ private fun StepPermissions() {
                     contentDescription = null,
                     tint = if (audioGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                 )
+            }
+        }
+
+        if (!audioGranted) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    audioPermissionLauncher.launch(PermissionUtils.getRequiredAudioPermission())
+                },
+                shape = PillShape,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Icon(Icons.Rounded.AudioFile, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Allow Audio Permission")
             }
         }
 

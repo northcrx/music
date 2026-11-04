@@ -17,6 +17,7 @@ import com.nishant.northmusic.util.PermissionUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,15 +26,12 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Repository responsible for indexing local media via MediaStore.
- * - Queries MediaStore.Audio.Media on Dispatchers.IO
- * - Groups into Songs, Albums, Artists, Folders
- * - Observes external content changes via ContentObserver
- * - Integrates with LocalStatsDatabase for persistent favorites and play counts
+ * MusicRepository queries MediaStore.Audio.Media on Dispatchers.IO.
+ * Automatically groups songs into Albums, Artists, Folders, and observes system audio changes.
  */
 class MusicRepository private constructor(private val context: Context) {
 
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val statsDb = LocalStatsDatabase.getInstance(context)
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
@@ -54,7 +52,7 @@ class MusicRepository private constructor(private val context: Context) {
     private var scanJob: Job? = null
 
     init {
-        // Register ContentObserver to automatically detect when music files are added/deleted
+        // Register ContentObserver to detect new or removed audio files automatically
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean, uri: Uri?) {
                 super.onChange(selfChange, uri)
@@ -146,7 +144,7 @@ class MusicRepository private constructor(private val context: Context) {
             }
         }.toTypedArray()
 
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= ?"
+        val selection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%') AND (${MediaStore.Audio.Media.DURATION} >= ? OR ${MediaStore.Audio.Media.DURATION} IS NULL)"
         val selectionArgs = arrayOf(minDurationMs.toString())
         val sortOrder = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
 
@@ -160,19 +158,19 @@ class MusicRepository private constructor(private val context: Context) {
             )
 
             cursor?.use { c ->
-                val idCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                val titleCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-                val artistCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-                val albumCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-                val albumIdCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
-                val artistIdCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
-                val durationCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-                val dateAddedCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
-                val trackCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
-                val yearCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
-                val sizeCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
-                val displayNameCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
-                val dataCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                val idCol = c.getColumnIndex(MediaStore.Audio.Media._ID)
+                val titleCol = c.getColumnIndex(MediaStore.Audio.Media.TITLE)
+                val artistCol = c.getColumnIndex(MediaStore.Audio.Media.ARTIST)
+                val albumCol = c.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                val albumIdCol = c.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
+                val artistIdCol = c.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID)
+                val durationCol = c.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                val dateAddedCol = c.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
+                val trackCol = c.getColumnIndex(MediaStore.Audio.Media.TRACK)
+                val yearCol = c.getColumnIndex(MediaStore.Audio.Media.YEAR)
+                val sizeCol = c.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                val displayNameCol = c.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
+                val dataCol = c.getColumnIndex(MediaStore.Audio.Media.DATA)
 
                 val relativePathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     c.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
@@ -183,19 +181,21 @@ class MusicRepository private constructor(private val context: Context) {
                 } else -1
 
                 while (c.moveToNext()) {
-                    val id = c.getLong(idCol)
-                    val rawTitle = c.getString(titleCol)
-                    val rawArtist = c.getString(artistCol)
-                    val rawAlbum = c.getString(albumCol)
-                    val albumId = c.getLong(albumIdCol)
-                    val artistId = c.getLong(artistIdCol)
-                    val durationMs = c.getLong(durationCol)
-                    val dateAdded = c.getLong(dateAddedCol)
-                    val track = c.getInt(trackCol)
-                    val year = c.getInt(yearCol)
-                    val size = c.getLong(sizeCol)
-                    val displayName = c.getString(displayNameCol) ?: "Unknown"
-                    val filePath = c.getString(dataCol) ?: ""
+                    val id = if (idCol >= 0) c.getLong(idCol) else 0L
+                    if (id == 0L) continue
+
+                    val rawTitle = if (titleCol >= 0) c.getString(titleCol) else null
+                    val rawArtist = if (artistCol >= 0) c.getString(artistCol) else null
+                    val rawAlbum = if (albumCol >= 0) c.getString(albumCol) else null
+                    val albumId = if (albumIdCol >= 0) c.getLong(albumIdCol) else 0L
+                    val artistId = if (artistIdCol >= 0) c.getLong(artistIdCol) else 0L
+                    val durationMs = if (durationCol >= 0) c.getLong(durationCol) else 0L
+                    val dateAdded = if (dateAddedCol >= 0) c.getLong(dateAddedCol) else 0L
+                    val track = if (trackCol >= 0) c.getInt(trackCol) else 0
+                    val year = if (yearCol >= 0) c.getInt(yearCol) else 0
+                    val size = if (sizeCol >= 0) c.getLong(sizeCol) else 0L
+                    val displayName = if (displayNameCol >= 0) c.getString(displayNameCol) ?: "Unknown" else "Unknown"
+                    val filePath = if (dataCol >= 0) c.getString(dataCol) ?: "" else ""
 
                     val relativePath = if (relativePathCol >= 0) c.getString(relativePathCol) ?: "" else ""
                     val genre = if (genreCol >= 0) c.getString(genreCol) ?: "Pop" else "Pop"

@@ -19,6 +19,17 @@ object PermissionUtils {
         }
     }
 
+    fun getPermissionsToRequest(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_AUDIO,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+        } else {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+    }
+
     fun hasAudioPermission(context: Context): Boolean {
         val permission = getRequiredAudioPermission()
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED

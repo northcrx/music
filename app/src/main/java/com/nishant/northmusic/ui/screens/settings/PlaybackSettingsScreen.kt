@@ -256,7 +256,7 @@ fun PlaybackSettingsScreen(
                             summary = "Resume playback automatically when headphones are plugged in",
                             icon = Icons.Rounded.Headphones,
                             checked = state.headphonesResumeOnConnect,
-                            onCheckedChange = { settingsViewModel.setResumeOnHeadphonesConnect(it) }
+                            onCheckedChange = { settingsViewModel.setHeadphonesResumeOnConnect(it) }
                         )
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
@@ -267,7 +267,7 @@ fun PlaybackSettingsScreen(
                             summary = "Pause music playback immediately when headphones or bluetooth detach",
                             icon = Icons.Rounded.Headphones,
                             checked = state.headphonesPauseOnDisconnect,
-                            onCheckedChange = { settingsViewModel.setPauseOnHeadphonesDisconnect(it) }
+                            onCheckedChange = { settingsViewModel.setHeadphonesPauseOnDisconnect(it) }
                         )
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
@@ -278,7 +278,7 @@ fun PlaybackSettingsScreen(
                             summary = "Start playing when your favorite Bluetooth speaker or earbuds reconnect",
                             icon = Icons.Rounded.Bluetooth,
                             checked = state.bluetoothResumeOnConnect,
-                            onCheckedChange = { settingsViewModel.setResumeOnBluetoothConnect(it) }
+                            onCheckedChange = { settingsViewModel.setBluetoothResumeOnConnect(it) }
                         )
                     }
                 }

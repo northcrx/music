@@ -102,53 +102,52 @@ class SettingsViewModel : ViewModel() {
         updateState { it.copy(lyricsFontSize = size) }
     }
 
+    fun setCustomFont(font: String) {
+        updateState { it.copy(customFont = font) }
+    }
+
     // --- Playback Settings ---
-    fun toggleGaplessPlayback(enabled: Boolean) {
+    fun setGaplessPlayback(enabled: Boolean) {
         updateState { it.copy(gaplessPlayback = enabled) }
     }
 
-    fun toggleAudioNormalization(enabled: Boolean) {
+    fun setAudioNormalization(enabled: Boolean) {
         updateState { it.copy(audioNormalization = enabled) }
     }
 
-    fun toggleHighQualityAudio(enabled: Boolean) {
+    fun setHighQualityAudio(enabled: Boolean) {
         updateState { it.copy(highQualityAudio = enabled) }
-    }
-
-    fun setHighQualityAudio(enabled: Boolean) = toggleHighQualityAudio(enabled)
-    fun setAudioNormalization(enabled: Boolean) = toggleAudioNormalization(enabled)
-    fun setGaplessPlayback(enabled: Boolean) = toggleGaplessPlayback(enabled)
-    fun setFadeOnPlayPause(enabled: Boolean) {
-        updateState { it.copy(fadeOnPlayPause = enabled) }
     }
 
     fun setReplayGainMode(mode: String) {
         updateState { it.copy(replayGainMode = mode) }
     }
 
-    fun setHeadphonesResume(enabled: Boolean) {
+    fun setFadeOnPlayPause(enabled: Boolean) {
+        updateState { it.copy(fadeOnPlayPause = enabled) }
+    }
+
+    fun setHeadphonesResumeOnConnect(enabled: Boolean) {
         updateState { it.copy(headphonesResumeOnConnect = enabled) }
     }
 
-    fun setResumeOnHeadphonesConnect(enabled: Boolean) = setHeadphonesResume(enabled)
+    fun setResumeOnHeadphonesConnect(enabled: Boolean) = setHeadphonesResumeOnConnect(enabled)
 
-    fun setHeadphonesPause(enabled: Boolean) {
+    fun setHeadphonesPauseOnDisconnect(enabled: Boolean) {
         updateState { it.copy(headphonesPauseOnDisconnect = enabled) }
     }
 
-    fun setPauseOnHeadphonesDisconnect(enabled: Boolean) = setHeadphonesPause(enabled)
+    fun setPauseOnHeadphonesDisconnect(enabled: Boolean) = setHeadphonesPauseOnDisconnect(enabled)
 
-    fun setBluetoothResume(enabled: Boolean) {
+    fun setBluetoothResumeOnConnect(enabled: Boolean) {
         updateState { it.copy(bluetoothResumeOnConnect = enabled) }
     }
 
-    fun setResumeOnBluetoothConnect(enabled: Boolean) = setBluetoothResume(enabled)
+    fun setResumeOnBluetoothConnect(enabled: Boolean) = setBluetoothResumeOnConnect(enabled)
 
-    fun setBluetoothPause(enabled: Boolean) {
+    fun setBluetoothPauseOnDisconnect(enabled: Boolean) {
         updateState { it.copy(bluetoothPauseOnDisconnect = enabled) }
     }
-
-    fun setPauseOnBluetoothDisconnect(enabled: Boolean) = setBluetoothPause(enabled)
 
     fun setAudioFocus(enabled: Boolean) {
         updateState { it.copy(audioFocus = enabled) }
@@ -216,6 +215,34 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun setIgnoreShortTracks(enabled: Boolean) = toggleIgnoreShortTracks(enabled)
+
+    fun toggleSplitArtistsOnAmpersand(enabled: Boolean) {
+        updateState { it.copy(splitArtistsOnAmpersand = enabled) }
+    }
+
+    fun setDontSplitArtistNames(names: List<String>) {
+        updateState { it.copy(dontSplitArtistNames = names) }
+    }
+
+    fun addDontSplitArtistName(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotBlank()) {
+            updateState {
+                val list = it.dontSplitArtistNames.toMutableList()
+                if (!list.any { existing -> existing.equals(trimmed, ignoreCase = true) }) {
+                    list.add(trimmed)
+                }
+                it.copy(dontSplitArtistNames = list)
+            }
+        }
+    }
+
+    fun removeDontSplitArtistName(name: String) {
+        updateState {
+            val list = it.dontSplitArtistNames.filterNot { existing -> existing.equals(name.trim(), ignoreCase = true) }
+            it.copy(dontSplitArtistNames = list)
+        }
+    }
 
     fun setMusicFolders(folders: List<String>) {
         updateState { it.copy(musicFolders = folders) }

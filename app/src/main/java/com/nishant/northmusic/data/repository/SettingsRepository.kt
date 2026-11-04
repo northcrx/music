@@ -65,6 +65,9 @@ object SettingsRepository {
         val savedNormalization = sp.getBoolean("audioNormalization", true)
         val savedHighQuality = sp.getBoolean("highQualityAudio", true)
         val savedAudioFocus = sp.getBoolean("audioFocus", true)
+        val savedSplitAmpersand = sp.getBoolean("splitArtistsOnAmpersand", false)
+        val savedDontSplitSet = sp.getStringSet("dontSplitArtistNames", null)
+        val savedDontSplit = savedDontSplitSet?.toList() ?: listOf("AC/DC", "Guns N' Roses", "Simon & Garfunkel", "Earth, Wind & Fire")
 
         val loaded = SettingsState(
             accentColor = savedAccent,
@@ -79,7 +82,9 @@ object SettingsRepository {
             gaplessPlayback = savedGapless,
             audioNormalization = savedNormalization,
             highQualityAudio = savedHighQuality,
-            audioFocus = savedAudioFocus
+            audioFocus = savedAudioFocus,
+            splitArtistsOnAmpersand = savedSplitAmpersand,
+            dontSplitArtistNames = savedDontSplit
         )
 
         _settingsState.value = loaded
@@ -115,6 +120,8 @@ object SettingsRepository {
                 putBoolean("audioNormalization", updated.audioNormalization)
                 putBoolean("highQualityAudio", updated.highQualityAudio)
                 putBoolean("audioFocus", updated.audioFocus)
+                putBoolean("splitArtistsOnAmpersand", updated.splitArtistsOnAmpersand)
+                putStringSet("dontSplitArtistNames", updated.dontSplitArtistNames.toSet())
                 apply()
             }
 

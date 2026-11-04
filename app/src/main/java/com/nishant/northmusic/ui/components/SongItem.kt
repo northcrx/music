@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Info
@@ -53,7 +54,8 @@ fun SongItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isPlaying: Boolean = false,
-    onOptionsClick: () -> Unit = {}
+    onOptionsClick: () -> Unit = {},
+    onRemoveFromQueue: (() -> Unit)? = null
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -156,6 +158,18 @@ fun SongItem(
                             onOptionsClick()
                         }
                     )
+                    if (onRemoveFromQueue != null) {
+                        DropdownMenuItem(
+                            text = { Text("Remove from queue") },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Delete, contentDescription = null)
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onRemoveFromQueue()
+                            }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("Track info") },
                         leadingIcon = {

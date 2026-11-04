@@ -158,7 +158,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     currentSong = song,
                     isPlaying = false,
                     currentPositionSeconds = posSec,
-                    isFavorite = statsDb.isFavorite(song.id)
+                    isFavorite = statsDb.isFavorite(song.id),
+                    playbackSource = "Queue"
                 )
             }
             _queue.value = listOf(song)
@@ -170,7 +171,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun playSong(song: Song, customQueue: List<Song>? = null) {
+    fun playSong(song: Song, customQueue: List<Song>? = null, source: String? = null) {
         val newQueue = customQueue ?: if (_queue.value.any { it.id == song.id }) _queue.value else listOf(song)
         _queue.value = newQueue
 
@@ -179,7 +180,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 currentSong = song,
                 isPlaying = true,
                 currentPositionSeconds = 0,
-                isFavorite = statsDb.isFavorite(song.id)
+                isFavorite = statsDb.isFavorite(song.id),
+                playbackSource = source ?: it.playbackSource ?: "Songs"
             )
         }
 
@@ -198,10 +200,10 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         controller.play()
     }
 
-    fun shuffleAll(songs: List<Song>) {
+    fun shuffleAll(songs: List<Song>, source: String? = null) {
         if (songs.isEmpty()) return
         val shuffled = songs.shuffled()
-        playSong(shuffled.first(), shuffled)
+        playSong(shuffled.first(), shuffled, source)
         mediaController?.shuffleModeEnabled = true
         _playerState.update { it.copy(isShuffle = true) }
     }
@@ -248,24 +250,26 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun cycleRepeatMode() {
         val controller = mediaController
-        val nextMode = when (_playerState.value.repeatMode) {
+        val current = _playerState.value.repeatMode
+        val next = when (current) {
             RepeatMode.OFF -> RepeatMode.ALL
             RepeatMode.ALL -> RepeatMode.ONE
             RepeatMode.ONE -> RepeatMode.OFF
         }
-        val exoMode = when (nextMode) {
-            RepeatMode.ONE -> Player.REPEAT_MODE_ONE
-            RepeatMode.ALL -> Player.REPEAT_MODE_ALL
+        val media3Mode = when (next) {
             RepeatMode.OFF -> Player.REPEAT_MODE_OFF
+            RepeatMode.ALL -> Player.REPEAT_MODE_ALL
+            RepeatMode.ONE -> Player.REPEAT_MODE_ONE
         }
-        controller?.repeatMode = exoMode
-        _playerState.update { it.copy(repeatMode = nextMode) }
+        controller?.repeatMode = media3Mode
+        _playerState.update { it.copy(repeatMode = next) }
     }
 
     fun seekTo(seconds: Int) {
         val controller = mediaController
-        controller?.seekTo(seconds * 1000L)
-        _playerState.update { it.copy(currentPositionSeconds = seconds) }
+        val safeSeconds = seconds.coerceAtLeast(0)
+        _playerState.update { it.copy(currentPositionSeconds = safeSeconds) }
+        controller?.seekTo(safeSeconds * 1000L)
     }
 
     fun skipNext() {

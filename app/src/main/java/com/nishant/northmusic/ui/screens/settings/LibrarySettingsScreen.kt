@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.rounded.AutoFixHigh
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FolderSpecial
@@ -52,6 +54,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
@@ -68,8 +71,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.nishant.northmusic.data.repository.MusicRepository
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import com.nishant.northmusic.ui.components.SettingsSectionTitle
 import com.nishant.northmusic.ui.components.SettingsSliderRow
@@ -85,6 +90,7 @@ fun LibrarySettingsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val state by settingsViewModel.settingsState.collectAsState()
     var showMetadataDialog by remember { mutableStateOf(false) }
     var showCategoriesDialog by remember { mutableStateOf(false) }
@@ -93,6 +99,7 @@ fun LibrarySettingsScreen(
     var showLastAddedIntervalDialog by remember { mutableStateOf(false) }
     var showArtistMinCountDialog by remember { mutableStateOf(false) }
     var showAlbumMinCountDialog by remember { mutableStateOf(false) }
+    var showDontSplitDialog by remember { mutableStateOf(false) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "rescan")
     val rotationAngle by infiniteTransition.animateFloat(
@@ -171,9 +178,14 @@ fun LibrarySettingsScreen(
                         SettingsSliderRow(
                             title = "Minimum song duration",
                             value = state.minSongDurationSeconds.toFloat(),
-                            valueRange = 0f..60f,
-                            valueDisplay = { "${it.toInt()}s" },
-                            onValueChange = { settingsViewModel.setMinSongDurationSeconds(it.toInt()) }
+                            valueRange = 0f..120f,
+                            steps = 11,
+                            valueLabel = "${state.minSongDurationSeconds}s",
+                            subtitle = "Songs shorter than this duration are filtered out",
+                            icon = Icons.Rounded.Timer,
+                            onValueChange = {
+                                settingsViewModel.setMinSongDurationSeconds(it.toInt())
+                            }
                         )
 
                         HorizontalDivider(
@@ -183,7 +195,7 @@ fun LibrarySettingsScreen(
 
                         SettingsValueRow(
                             title = "Artist minimum song count",
-                            value = "${state.artistMinSongCount} song(s)",
+                            value = "${state.artistMinSongCount}",
                             subtitle = "Minimum tracks required to list an artist",
                             icon = Icons.Rounded.Person,
                             onClick = { showArtistMinCountDialog = true }
@@ -196,7 +208,7 @@ fun LibrarySettingsScreen(
 
                         SettingsValueRow(
                             title = "Album minimum song count",
-                            value = "${state.albumMinSongCount} song(s)",
+                            value = "${state.albumMinSongCount}",
                             subtitle = "Minimum tracks required to list an album",
                             icon = Icons.Rounded.Album,
                             onClick = { showAlbumMinCountDialog = true }
@@ -213,6 +225,35 @@ fun LibrarySettingsScreen(
                             checked = state.ignoreShortTracks,
                             onCheckedChange = { settingsViewModel.toggleIgnoreShortTracks(it) },
                             icon = Icons.Rounded.FolderSpecial
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsSwitchRow(
+                            title = "Split artists on &",
+                            subtitle = "Separate collaboration tags that use '&' (e.g. Artist A & Artist B)",
+                            checked = state.splitArtistsOnAmpersand,
+                            onCheckedChange = {
+                                settingsViewModel.toggleSplitArtistsOnAmpersand(it)
+                                MusicRepository.getInstance(context).rescan()
+                            },
+                            icon = Icons.Rounded.Person
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsValueRow(
+                            title = "Don't split these names",
+                            value = "${state.dontSplitArtistNames.size}",
+                            subtitle = if (state.dontSplitArtistNames.isEmpty()) "None protected" else "${state.dontSplitArtistNames.size} protected names (e.g. AC/DC)",
+                            icon = Icons.Rounded.CheckCircle,
+                            onClick = { showDontSplitDialog = true }
                         )
                     }
                 }
@@ -639,6 +680,93 @@ fun LibrarySettingsScreen(
                 }
             },
             confirmButton = {}
+        )
+    }
+
+    // Don't Split These Names Dialog
+    if (showDontSplitDialog) {
+        var newNameText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showDontSplitDialog = false },
+            title = { Text("Don't Split These Names") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Artist names in this list will never be separated into distinct artists (e.g. bands with '&' or punctuation):",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newNameText,
+                            onValueChange = { newNameText = it },
+                            placeholder = { Text("Add artist name...") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Button(
+                            onClick = {
+                                if (newNameText.isNotBlank()) {
+                                    settingsViewModel.addDontSplitArtistName(newNameText.trim())
+                                    MusicRepository.getInstance(context).rescan()
+                                    newNameText = ""
+                                }
+                            },
+                            shape = PillShape
+                        ) {
+                            Text("Add")
+                        }
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    ) {
+                        items(state.dontSplitArtistNames) { name ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = {
+                                        settingsViewModel.removeDontSplitArtistName(name)
+                                        MusicRepository.getInstance(context).rescan()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = "Remove",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDontSplitDialog = false }) {
+                    Text("Done")
+                }
+            }
         )
     }
 

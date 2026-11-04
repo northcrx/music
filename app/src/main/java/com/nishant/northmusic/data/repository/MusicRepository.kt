@@ -24,6 +24,67 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.Normalizer
+
+fun normalizeText(input: String): String {
+    val decomposed = Normalizer.normalize(input, Normalizer.Form.NFD)
+    val withoutAccents = decomposed.replace(Regex("\\p{M}"), "")
+    var cleaned = withoutAccents.lowercase().trim().replace(Regex("\\s+"), " ")
+    if (cleaned.endsWith(" - single")) {
+        cleaned = cleaned.removeSuffix(" - single").trim()
+    }
+    if (cleaned.endsWith(" - ep")) {
+        cleaned = cleaned.removeSuffix(" - ep").trim()
+    }
+    return cleaned
+}
+
+fun splitArtistNames(
+    rawArtist: String,
+    splitOnAmpersand: Boolean = false,
+    dontSplitList: List<String> = emptyList()
+): List<String> {
+    if (rawArtist.isBlank()) return listOf("Unknown Artist")
+
+    if (dontSplitList.any { it.equals(rawArtist.trim(), ignoreCase = true) }) {
+        return listOf(rawArtist.trim())
+    }
+
+    var protectedText = rawArtist
+    val replacements = mutableMapOf<String, String>()
+    dontSplitList.forEachIndexed { index, name ->
+        if (name.isNotBlank() && protectedText.contains(name, ignoreCase = true)) {
+            val placeholder = "___PROTECTED_ARTIST_${index}___"
+            val regex = Regex(Regex.escape(name), RegexOption.IGNORE_CASE)
+            protectedText = regex.replace(protectedText, placeholder)
+            replacements[placeholder] = name
+        }
+    }
+
+    val pattern = if (splitOnAmpersand) {
+        Regex("\\s*(?:;\\s*|/\\s*|\\s*,\\s*|\\s+(?:feat\\.?|ft\\.?|featuring|&)\\s+)\\s*", RegexOption.IGNORE_CASE)
+    } else {
+        Regex("\\s*(?:;\\s*|/\\s*|\\s*,\\s*|\\s+(?:feat\\.?|ft\\.?|featuring)\\s+)\\s*", RegexOption.IGNORE_CASE)
+    }
+
+    val tokens = protectedText.split(pattern)
+        .map { token ->
+            var restored = token.trim()
+            replacements.forEach { (placeholder, original) ->
+                restored = restored.replace(placeholder, original)
+            }
+            restored.trim()
+        }
+        .filter { it.isNotBlank() }
+
+    return if (tokens.isEmpty()) listOf(rawArtist.trim()) else tokens.distinct()
+}
+
+private data class TrackRecord(
+    val song: Song,
+    val albumArtist: String?,
+    val primaryArtist: String
+)
 
 /**
  * MusicRepository queries MediaStore.Audio.Media on Dispatchers.IO.
@@ -116,6 +177,7 @@ class MusicRepository private constructor(private val context: Context) {
 
     private suspend fun queryMediaStore() = withContext(Dispatchers.IO) {
         val songList = mutableListOf<Song>()
+        val records = mutableListOf<TrackRecord>()
         val favorites = statsDb.favoritesFlow.value
         val settings = SettingsRepository.current
         val minDurationMs = if (settings.ignoreShortTracks) settings.minSongDurationSeconds * 1000L else 0L
@@ -141,6 +203,7 @@ class MusicRepository private constructor(private val context: Context) {
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 add(MediaStore.Audio.Media.GENRE)
+                add("album_artist")
             }
         }.toTypedArray()
 
@@ -180,6 +243,10 @@ class MusicRepository private constructor(private val context: Context) {
                     c.getColumnIndex(MediaStore.Audio.Media.GENRE)
                 } else -1
 
+                val albumArtistCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    c.getColumnIndex("album_artist")
+                } else -1
+
                 while (c.moveToNext()) {
                     val id = if (idCol >= 0) c.getLong(idCol) else 0L
                     if (id == 0L) continue
@@ -200,6 +267,9 @@ class MusicRepository private constructor(private val context: Context) {
                     val relativePath = if (relativePathCol >= 0) c.getString(relativePathCol) ?: "" else ""
                     val genre = if (genreCol >= 0) c.getString(genreCol) ?: "Pop" else "Pop"
 
+                    val rawAlbumArtist = if (albumArtistCol >= 0) c.getString(albumArtistCol) else null
+                    val effectiveAlbumArtist = if (!rawAlbumArtist.isNullOrBlank() && rawAlbumArtist != "<unknown>") rawAlbumArtist.trim() else null
+
                     // Check blacklist
                     val lowerPath = filePath.lowercase()
                     if (blacklist.any { lowerPath.contains(it) }) {
@@ -219,56 +289,100 @@ class MusicRepository private constructor(private val context: Context) {
                     // Deterministic color seed for UI accent fallback
                     val colorSeed = (title.hashCode().toLong() and 0xFFFFFFL) or 0xFF000000L
 
-                    songList.add(
-                        Song(
-                            id = id.toString(),
-                            title = title,
-                            artist = artist,
-                            album = album,
-                            albumId = albumId,
-                            artistId = artistId,
-                            durationSeconds = (durationMs / 1000).toInt(),
-                            colorSeed = colorSeed,
-                            isFavorite = favorites.contains(id.toString()),
-                            isHighQuality = true,
-                            genre = genre,
-                            filePath = filePath,
-                            relativeFolder = folderName,
-                            dateAdded = dateAdded,
-                            year = year,
-                            trackNumber = track,
-                            sizeBytes = size
-                        )
+                    val song = Song(
+                        id = id.toString(),
+                        title = title,
+                        artist = artist,
+                        album = album,
+                        albumId = albumId,
+                        artistId = artistId,
+                        durationSeconds = (durationMs / 1000).toInt(),
+                        colorSeed = colorSeed,
+                        isFavorite = favorites.contains(id.toString()),
+                        isHighQuality = true,
+                        genre = genre,
+                        filePath = filePath,
+                        relativeFolder = folderName,
+                        dateAdded = dateAdded,
+                        year = year,
+                        trackNumber = track,
+                        sizeBytes = size
                     )
+
+                    songList.add(song)
+
+                    val primaryArtist = splitArtistNames(artist, splitOnAmpersand = false, dontSplitList = emptyList()).firstOrNull() ?: artist
+                    records.add(TrackRecord(song = song, albumArtist = effectiveAlbumArtist, primaryArtist = primaryArtist))
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
-        // Group into Albums
-        val albumList = songList.groupBy { it.albumId to it.album }.map { (key, songsInAlbum) ->
+        // Step 3: Album Grouping:
+        // Key = normalize(albumTitle) + "|" + normalize(albumArtist)
+        // If same album title has >= 3 distinct primary artists, group as "Various Artists"
+        val titleToDistinctPrimaryArtists = records.groupBy { normalizeText(it.song.album) }
+            .mapValues { (_, recs) ->
+                recs.map { normalizeText(it.primaryArtist) }.distinct().size
+            }
+
+        val albumList = records.groupBy { rec ->
+            val normTitle = normalizeText(rec.song.album)
+            val isVarious = (titleToDistinctPrimaryArtists[normTitle] ?: 0) >= 3
+            val candidateArtist = rec.albumArtist ?: rec.primaryArtist
+            val finalAlbumArtist = if (isVarious) "Various Artists" else candidateArtist
+            normTitle + "|" + normalizeText(finalAlbumArtist)
+        }.map { (groupKey, groupRecords) ->
+            val songsInAlbum = groupRecords.map { it.song }
             val first = songsInAlbum.first()
+            val firstRecord = groupRecords.first()
+            val normTitle = normalizeText(first.album)
+            val isVarious = (titleToDistinctPrimaryArtists[normTitle] ?: 0) >= 3
+            val albumTitle = songsInAlbum.firstOrNull { it.album.isNotBlank() && it.album != "Unknown Album" }?.album ?: first.album
+            val albumArtist = if (isVarious) {
+                "Various Artists"
+            } else {
+                groupRecords.mapNotNull { it.albumArtist }.firstOrNull { it.isNotBlank() } ?: firstRecord.primaryArtist
+            }
+            // Merge artwork: use first available artwork among grouped tracks
+            val firstArtUri = songsInAlbum.firstOrNull { it.albumId > 0L }?.albumArtUri ?: first.albumArtUri
+            val maxYear = songsInAlbum.map { it.year }.firstOrNull { it > 0 } ?: first.year
+
             Album(
-                id = key.first.toString(),
-                title = key.second,
-                artist = first.artist,
+                id = groupKey,
+                title = albumTitle,
+                artist = albumArtist,
                 songCount = songsInAlbum.size,
-                year = first.year,
+                year = maxYear,
                 colorSeed = first.colorSeed,
-                albumId = key.first
+                albumId = first.albumId,
+                customArtUri = firstArtUri
             )
         }.sortedBy { it.title.lowercase() }
 
-        // Group into Artists
-        val artistList = songList.groupBy { it.artist }.map { (artistName, songsByArtist) ->
+        // Step 4: Artist Splitting
+        val splitArtistsOnAmpersand = settings.splitArtistsOnAmpersand
+        val dontSplitList = settings.dontSplitArtistNames
+
+        val artistMap = mutableMapOf<String, MutableList<Song>>()
+
+        records.forEach { rec ->
+            val song = rec.song
+            val splitNames = splitArtistNames(song.artist, splitArtistsOnAmpersand, dontSplitList)
+            splitNames.forEach { name ->
+                artistMap.getOrPut(name) { mutableListOf() }.add(song)
+            }
+        }
+
+        val artistList = artistMap.map { (artistName, songsByArtist) ->
             val first = songsByArtist.first()
-            val albumCount = songsByArtist.map { it.albumId }.distinct().size
+            val distinctAlbumCount = songsByArtist.map { normalizeText(it.album) }.distinct().size
             Artist(
-                id = first.artistId.toString(),
+                id = artistName.hashCode().toString(),
                 name = artistName,
                 songCount = songsByArtist.size,
-                albumCount = albumCount,
+                albumCount = distinctAlbumCount,
                 colorSeed = first.colorSeed
             )
         }.sortedBy { it.name.lowercase() }

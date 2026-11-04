@@ -46,13 +46,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.rounded.ManageSearch
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -106,6 +106,9 @@ import com.nishant.northmusic.data.model.FolderItem
 import com.nishant.northmusic.data.model.LibraryFilter
 import com.nishant.northmusic.data.model.Playlist
 import com.nishant.northmusic.data.model.Song
+import com.nishant.northmusic.data.repository.SettingsRepository
+import com.nishant.northmusic.data.repository.normalizeText
+import com.nishant.northmusic.data.repository.splitArtistNames
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import com.nishant.northmusic.ui.components.AsyncSongArtwork
 import com.nishant.northmusic.ui.components.SongItem
@@ -392,7 +395,7 @@ fun LibraryScreen(
                                 SongItem(
                                     song = song,
                                     isPlaying = isPlaying,
-                                    onClick = { playerViewModel.playSong(song, sortedSongs) },
+                                    onClick = { playerViewModel.playSong(song, sortedSongs, source = "Songs") },
                                     onOptionsClick = { /* TODO: Song context menu */ }
                                 )
                             }
@@ -546,10 +549,10 @@ fun LibraryScreen(
                     albums = uiState.albums,
                     onAlbumClick = { album ->
                         val matchingSongs = uiState.songs.filter {
-                            it.albumId == album.albumId || it.album.equals(album.title, ignoreCase = true)
+                            it.albumId == album.albumId || normalizeText(it.album) == normalizeText(album.title)
                         }
                         matchingSongs.firstOrNull()?.let {
-                            playerViewModel.playSong(it, matchingSongs)
+                            playerViewModel.playSong(it, matchingSongs, source = "Album ${album.title}")
                         }
                     }
                 )
@@ -559,11 +562,13 @@ fun LibraryScreen(
                 ArtistsTabContent(
                     artists = uiState.artists,
                     onArtistClick = { artist ->
-                        val matchingSongs = uiState.songs.filter {
-                            it.artistId.toString() == artist.id || it.artist.contains(artist.name, ignoreCase = true)
+                        val settings = SettingsRepository.current
+                        val matchingSongs = uiState.songs.filter { song ->
+                            val split = splitArtistNames(song.artist, settings.splitArtistsOnAmpersand, settings.dontSplitArtistNames)
+                            split.any { it.equals(artist.name, ignoreCase = true) }
                         }
                         matchingSongs.firstOrNull()?.let {
-                            playerViewModel.playSong(it, matchingSongs)
+                            playerViewModel.playSong(it, matchingSongs, source = "Artist ${artist.name}")
                         }
                     }
                 )
@@ -572,9 +577,9 @@ fun LibraryScreen(
             LibraryFilter.PLAYLISTS -> {
                 PlaylistsTabContent(
                     playlists = uiState.playlists,
-                    onPlaylistClick = {
+                    onPlaylistClick = { playlist ->
                         uiState.songs.firstOrNull()?.let {
-                            playerViewModel.playSong(it, uiState.songs)
+                            playerViewModel.playSong(it, uiState.songs, source = "Playlist ${playlist.title}")
                         }
                     }
                 )
@@ -588,7 +593,7 @@ fun LibraryScreen(
                             it.relativeFolder == folder.path || it.filePath.contains(folder.name)
                         }
                         matchingSongs.firstOrNull()?.let {
-                            playerViewModel.playSong(it, matchingSongs)
+                            playerViewModel.playSong(it, matchingSongs, source = "Folder ${folder.name}")
                         }
                     }
                 )
@@ -641,8 +646,9 @@ private fun AlbumsTabContent(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                val albumSubtitle = if (album.year > 0) "${album.artist} • ${album.year}" else album.artist
                 Text(
-                    text = "${album.artist} • ${album.year}",
+                    text = albumSubtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -703,8 +709,10 @@ private fun ArtistsTabContent(
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
+                    val trackText = if (artist.songCount == 1) "1 track" else "${artist.songCount} tracks"
+                    val albumText = if (artist.albumCount == 1) "1 album" else "${artist.albumCount} albums"
                     Text(
-                        text = "${artist.songCount} tracks • ${artist.albumCount} albums",
+                        text = "$trackText • $albumText",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -746,13 +754,13 @@ private fun PlaylistsTabContent(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = Color(playlist.colorSeed),
                     modifier = Modifier.size(52.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Rounded.QueueMusic,
+                            imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(26.dp)
@@ -770,8 +778,9 @@ private fun PlaylistsTabContent(
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
+                    val trackText = if (playlist.songCount == 1) "1 track" else "${playlist.songCount} tracks"
                     Text(
-                        text = "${playlist.songCount} tracks",
+                        text = trackText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -841,8 +850,9 @@ private fun FoldersTabContent(
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
+                    val trackText = if (folder.songCount == 1) "1 track" else "${folder.songCount} tracks"
                     Text(
-                        text = "${folder.path} • ${folder.songCount} songs",
+                        text = "${folder.path} • $trackText",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

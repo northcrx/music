@@ -95,7 +95,7 @@ fun SongListSubScreen(
                     SongItem(
                         song = song,
                         isPlaying = isPlaying,
-                        onClick = { playerViewModel.playSong(song, songs) },
+                        onClick = { playerViewModel.playSong(song, songs, source = title) },
                         onOptionsClick = { /* TODO: Context menu */ }
                     )
                 }

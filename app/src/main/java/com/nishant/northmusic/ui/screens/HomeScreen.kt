@@ -75,6 +75,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nishant.northmusic.data.model.Song
+import com.nishant.northmusic.data.repository.normalizeText
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import com.nishant.northmusic.navigation.Screen
 import com.nishant.northmusic.ui.components.AsyncSongArtwork
@@ -417,7 +418,7 @@ fun HomeScreen(
                                     if (!recentSearches.contains(song.title)) {
                                         recentSearches.add(0, song.title)
                                     }
-                                    playerViewModel.playSong(song, liveSearchResults)
+                                    playerViewModel.playSong(song, liveSearchResults, source = "Search results")
                                 },
                                 onOptionsClick = { /* TODO: Song context menu */ }
                             )
@@ -514,7 +515,7 @@ fun HomeScreen(
                                     .clip(RoundedCornerShape(20.dp))
                                     .clickable {
                                         homeViewModel.onShuffleMixClick()
-                                        playerViewModel.shuffleAll(uiState.yourMusic)
+                                        playerViewModel.shuffleAll(uiState.yourMusic, source = "Personalized mix")
                                     },
                                 shape = RoundedCornerShape(20.dp),
                                 color = MaterialTheme.colorScheme.primary
@@ -565,7 +566,7 @@ fun HomeScreen(
                                 defaultArtist = "Your library",
                                 defaultColorSeed = 0xFF0D9488,
                                 onClick = {
-                                    tileSong1?.let { playerViewModel.playSong(it, forYouList) }
+                                    tileSong1?.let { playerViewModel.playSong(it, forYouList, source = "For you") }
                                 },
                                 modifier = Modifier.weight(1f)
                             )
@@ -584,7 +585,7 @@ fun HomeScreen(
                                 defaultArtist = "Quick resume",
                                 defaultColorSeed = 0xFFDC2626,
                                 onClick = {
-                                    tileSong2?.let { playerViewModel.playSong(it, forYouList) }
+                                    tileSong2?.let { playerViewModel.playSong(it, forYouList, source = "For you") }
                                 },
                                 modifier = Modifier.weight(1f)
                             )
@@ -596,7 +597,7 @@ fun HomeScreen(
                                 defaultArtist = "Loved tracks",
                                 defaultColorSeed = 0xFF15803D,
                                 onClick = {
-                                    tileSong3?.let { playerViewModel.playSong(it, forYouList) }
+                                    tileSong3?.let { playerViewModel.playSong(it, forYouList, source = "For you") }
                                 },
                                 modifier = Modifier.weight(1f)
                             )
@@ -628,10 +629,10 @@ fun HomeScreen(
                                             .width(148.dp)
                                             .clickable {
                                                 val albumSongs = uiState.yourMusic.filter {
-                                                    it.albumId == album.albumId || it.album.equals(album.title, ignoreCase = true)
+                                                    it.albumId == album.albumId || normalizeText(it.album) == normalizeText(album.title)
                                                 }
                                                 albumSongs.firstOrNull()?.let {
-                                                    playerViewModel.playSong(it, albumSongs)
+                                                    playerViewModel.playSong(it, albumSongs, source = "Album ${album.title}")
                                                 }
                                             }
                                     ) {
@@ -743,7 +744,7 @@ fun HomeScreen(
                                 SongItem(
                                     song = song,
                                     isPlaying = playerState.currentSong?.id == song.id && playerState.isPlaying,
-                                    onClick = { playerViewModel.playSong(song, uiState.yourMusic) },
+                                    onClick = { playerViewModel.playSong(song, uiState.yourMusic, source = "Songs") },
                                     onOptionsClick = { /* TODO: Song context options */ }
                                 )
                             }

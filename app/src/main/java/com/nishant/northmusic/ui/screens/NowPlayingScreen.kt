@@ -2,6 +2,7 @@ package com.nishant.northmusic.ui.screens
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -63,8 +65,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -74,7 +74,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -90,6 +89,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -105,6 +106,8 @@ import com.nishant.northmusic.ui.theme.SquircleLargeArtworkShape
 import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
 import com.nishant.northmusic.util.FeatureFlags
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,6 +129,7 @@ fun NowPlayingScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedSheetTab by remember { mutableIntStateOf(0) } // 0 = Lyrics, 1 = Up Next
     var showMoreMenu by remember { mutableStateOf(false) }
+    var isQueueItemDragging by remember { mutableStateOf(false) }
 
     // Fixed page layout: No verticalScroll on outer column so the player is always stable
     Column(
@@ -143,13 +147,51 @@ fun NowPlayingScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    val (sourceCategory, sourceDetail) = remember(playerState.playbackSource, song) {
+                        val src = playerState.playbackSource?.trim().orEmpty()
+                        when {
+                            src.startsWith("Playing from album ", ignoreCase = true) -> {
+                                "PLAYING FROM ALBUM" to src.substringAfter("Playing from album ").ifBlank { song.album }
+                            }
+                            src.startsWith("Album ", ignoreCase = true) -> {
+                                "PLAYING FROM ALBUM" to src.substringAfter("Album ").ifBlank { song.album }
+                            }
+                            src.startsWith("Playing from artist ", ignoreCase = true) -> {
+                                "PLAYING FROM ARTIST" to src.substringAfter("Playing from artist ").ifBlank { song.artist }
+                            }
+                            src.startsWith("Artist ", ignoreCase = true) -> {
+                                "PLAYING FROM ARTIST" to src.substringAfter("Artist ").ifBlank { song.artist }
+                            }
+                            src.startsWith("Playlist ", ignoreCase = true) -> {
+                                "PLAYING FROM PLAYLIST" to src.substringAfter("Playlist ")
+                            }
+                            src.startsWith("Folder ", ignoreCase = true) -> {
+                                "PLAYING FROM FOLDER" to src.substringAfter("Folder ")
+                            }
+                            src.equals("Songs", ignoreCase = true) -> {
+                                "PLAYING FROM" to "Songs"
+                            }
+                            src.equals("Search results", ignoreCase = true) -> {
+                                "PLAYING FROM" to "Search results"
+                            }
+                            src.equals("Queue", ignoreCase = true) -> {
+                                "PLAYING FROM" to "Queue"
+                            }
+                            src.isNotBlank() -> {
+                                "PLAYING FROM" to src
+                            }
+                            else -> {
+                                "PLAYING FROM ALBUM" to song.album
+                            }
+                        }
+                    }
                     Text(
-                        text = "PLAYING FROM PLAYLIST",
+                        text = sourceCategory,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = song.album,
+                        text = sourceDetail,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -516,11 +558,11 @@ fun NowPlayingScreen(
     // Modal Bottom Sheet for Lyrics & Up Next
     if (showBottomSheet) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-        val coroutineScope = rememberCoroutineScope()
 
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
+            sheetGesturesEnabled = !isQueueItemDragging,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             dragHandle = {
                 Box(
@@ -607,6 +649,9 @@ fun NowPlayingScreen(
                             },
                             onClearQueue = {
                                 playerViewModel.clearQueue()
+                            },
+                            onDragStateChanged = { dragging ->
+                                isQueueItemDragging = dragging
                             }
                         )
                     }
@@ -755,8 +800,8 @@ fun LyricsTabContent(
 
 /**
  * Up Next Tab:
- * Queue list using the shared SongItem with drag handles to reorder, swipe to remove,
- * current song at top, and a "Clear queue" action.
+ * Queue list using the shared SongItem with drag handles to reorder,
+ * 3-dot menu with "Remove from queue", lifted-item shadow, and haptic feedback.
  */
 @Composable
 fun UpNextTabContent(
@@ -766,8 +811,24 @@ fun UpNextTabContent(
     onRemoveFromQueue: (String) -> Unit,
     onMoveQueueItem: (from: Int, to: Int) -> Unit,
     onClearQueue: () -> Unit,
+    onDragStateChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val lazyListState = rememberLazyListState()
+    val haptic = LocalHapticFeedback.current
+    var currentQueueList by remember(queue) { mutableStateOf(queue) }
+
+    val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        currentQueueList = currentQueueList.toMutableList().apply {
+            add(to.index, removeAt(from.index))
+        }
+        onMoveQueueItem(from.index, to.index)
+    }
+
+    LaunchedEffect(reorderableLazyListState.isAnyItemDragging) {
+        onDragStateChanged(reorderableLazyListState.isAnyItemDragging)
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         // Queue Summary & Clear Queue Row
         Row(
@@ -777,123 +838,96 @@ fun UpNextTabContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val countText = if (currentQueueList.size == 1) "1 track in queue" else "${currentQueueList.size} tracks in queue"
             Text(
-                text = "${queue.size} songs in queue",
+                text = countText,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            TextButton(
-                onClick = onClearQueue,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.ClearAll,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Clear queue")
+            if (currentQueueList.isNotEmpty()) {
+                TextButton(
+                    onClick = onClearQueue,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ClearAll,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Clear queue")
+                }
             }
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 32.dp)
-        ) {
-            // Section 1: Currently Playing Song
-            item {
+        if (currentQueueList.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 48.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
                 Text(
-                    text = "NOW PLAYING",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
-                )
-
-                SongItem(
-                    song = currentSong,
-                    isPlaying = true,
-                    onClick = { /* Already playing */ },
-                    onOptionsClick = { /* Song options */ }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // Section 2: Queue items with SwipeToDismissBox & Drag Handles
-            item {
-                Text(
-                    text = "UP NEXT",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                    text = "Queue is empty",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            itemsIndexed(
-                items = queue.filter { it.id != currentSong.id },
-                key = { _, song -> song.id }
-            ) { index, song ->
-                val dismissState = rememberSwipeToDismissBoxState(
-                    confirmValueChange = { value ->
-                        if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
-                            onRemoveFromQueue(song.id)
-                            true
-                        } else false
-                    }
-                )
-
-                SwipeToDismissBox(
-                    state = dismissState,
-                    backgroundContent = {
-                        Box(
+        } else {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 32.dp)
+            ) {
+                items(
+                    items = currentQueueList,
+                    key = { it.id }
+                ) { song ->
+                    ReorderableItem(
+                        state = reorderableLazyListState,
+                        key = song.id
+                    ) { isDragging ->
+                        val elevation by animateDpAsState(
+                            targetValue = if (isDragging) 8.dp else 0.dp,
+                            label = "elevation"
+                        )
+                        Row(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.errorContainer)
-                                .padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.CenterEnd
+                                .fillMaxWidth()
+                                .shadow(elevation, shape = RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isDragging) MaterialTheme.colorScheme.surfaceContainerHigh
+                                    else Color.Transparent
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Delete,
-                                contentDescription = "Remove from queue",
-                                tint = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                    }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceContainerLow),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            SongItem(
-                                song = song,
-                                isPlaying = false,
-                                onClick = { onSongClick(song) },
-                                onOptionsClick = { /* Options */ }
-                            )
-                        }
+                            Box(modifier = Modifier.weight(1f)) {
+                                SongItem(
+                                    song = song,
+                                    isPlaying = song.id == currentSong.id,
+                                    onClick = { onSongClick(song) },
+                                    onRemoveFromQueue = { onRemoveFromQueue(song.id) }
+                                )
+                            }
 
-                        // Reorder Handle
-                        IconButton(
-                            onClick = {
-                                val actualIdx = queue.indexOfFirst { it.id == song.id }
-                                if (actualIdx > 1) {
-                                    onMoveQueueItem(actualIdx, actualIdx - 1)
-                                }
-                            },
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.DragHandle,
-                                contentDescription = "Drag to reorder",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            IconButton(
+                                onClick = {},
+                                modifier = Modifier
+                                    .draggableHandle(
+                                        onDragStarted = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        }
+                                    )
+                                    .padding(end = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.DragHandle,
+                                    contentDescription = "Drag to reorder",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

@@ -37,6 +37,10 @@ import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -297,23 +301,31 @@ fun AppearanceSettingsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
                         ) {
-                            ThemeMode.entries.forEach { mode ->
-                                val selected = state.themeMode == mode
-                                FilterChip(
-                                    selected = selected,
+                            ThemeMode.entries.forEachIndexed { index, mode ->
+                                val label = when (mode) {
+                                    ThemeMode.SYSTEM -> "Default"
+                                    ThemeMode.DARK -> "Dark"
+                                    ThemeMode.LIGHT -> "Light"
+                                }
+                                SegmentedButton(
+                                    selected = state.themeMode == mode,
                                     onClick = { settingsViewModel.setThemeMode(mode) },
-                                    label = { Text(mode.label) },
-                                    modifier = Modifier.weight(1f),
-                                    shape = PillShape,
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = ThemeMode.entries.size),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
-                                )
+                                }
                             }
                         }
                     }

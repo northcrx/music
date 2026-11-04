@@ -67,10 +67,11 @@ data class Album(
     val songCount: Int,
     val year: Int,
     val colorSeed: Long = 0xFF2DD4BF,
-    val albumId: Long = id.toLongOrNull() ?: 0L
+    val albumId: Long = id.toLongOrNull() ?: 0L,
+    val customArtUri: Uri? = null
 ) {
     val albumArtUri: Uri
-        get() = ContentUris.withAppendedId(
+        get() = customArtUri ?: ContentUris.withAppendedId(
             Uri.parse("content://media/external/audio/albumart"),
             albumId
         )
@@ -131,7 +132,8 @@ data class PlayerState(
     val isShuffle: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.OFF,
     val isFavorite: Boolean = false,
-    val volume: Float = 0.8f
+    val volume: Float = 0.8f,
+    val playbackSource: String? = null
 ) {
     val formattedCurrentPosition: String
         get() {
@@ -161,7 +163,7 @@ data class BottomNavItem(
 )
 
 enum class ThemeMode(val label: String) {
-    SYSTEM("System default"),
+    SYSTEM("Default"),
     DARK("Dark"),
     LIGHT("Light")
 }
@@ -306,6 +308,8 @@ data class SettingsState(
     val lastAddedIntervalDays: Int = 14,
     val ignoreShortTracks: Boolean = true,
     val musicFolders: List<String> = listOf("/storage/emulated/0/Music", "/storage/emulated/0/Download"),
+    val splitArtistsOnAmpersand: Boolean = false,
+    val dontSplitArtistNames: List<String> = listOf("AC/DC", "Guns N' Roses", "Simon & Garfunkel", "Earth, Wind & Fire"),
     val isRescanning: Boolean = false,
     val metadataFixState: MetadataFixState = MetadataFixState(),
 

@@ -107,6 +107,7 @@ fun HomeScreen(
     downloadsViewModel: DownloadsViewModel? = null,
     onNavigateToSettings: () -> Unit,
     onNavigateToShortcut: (String) -> Unit = {},
+    onNavigateToNowPlaying: () -> Unit = {},
     isSearchActive: Boolean = false,
     onSearchActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
@@ -567,6 +568,8 @@ fun HomeScreen(
                                         } else {
                                             playerViewModel.playSong(track.toSong(), source = "Online Stream (320k)")
                                         }
+                                        onSearchActiveChange(false)
+                                        onNavigateToNowPlaying()
                                     }
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -620,7 +623,7 @@ fun HomeScreen(
                                             downloadsViewModel?.enqueue(track.title, track.artist, track.album, track.downloadUrl, track.artworkUrl)
                                         }
                                     },
-                                    modifier = Modifier.size(42.dp)
+                                    modifier = Modifier.size(40.dp)
                                 ) {
                                     when {
                                         isDownloaded -> {
@@ -633,26 +636,18 @@ fun HomeScreen(
                                         }
                                         isDownloading -> {
                                             CircularProgressIndicator(
-                                                modifier = Modifier.size(22.dp),
-                                                strokeWidth = 2.5.dp,
+                                                modifier = Modifier.size(20.dp),
+                                                strokeWidth = 2.dp,
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                         else -> {
-                                            Surface(
-                                                shape = CircleShape,
-                                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                modifier = Modifier.size(36.dp)
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        imageVector = Icons.Rounded.Download,
-                                                        contentDescription = "Download",
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                        modifier = Modifier.size(20.dp)
-                                                    )
-                                                }
-                                            }
+                                            Icon(
+                                                imageVector = Icons.Rounded.Download,
+                                                contentDescription = "Download",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
                                         }
                                     }
                                 }
@@ -681,6 +676,8 @@ fun HomeScreen(
                                         recentSearches.add(0, song.title)
                                     }
                                     playerViewModel.playSong(song, liveSearchResults, source = "Search results")
+                                    onSearchActiveChange(false)
+                                    onNavigateToNowPlaying()
                                 },
                                 onOptionsClick = { }
                             )

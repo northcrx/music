@@ -1,5 +1,10 @@
 package com.nishant.northmusic.navigation
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
@@ -83,7 +88,7 @@ import com.nishant.northmusic.ui.viewmodels.LibraryViewModel
 import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
 
-val BottomListScrollPadding = 110.dp
+val BottomListScrollPadding = 180.dp
 
 @Composable
 fun MainScaffold(
@@ -168,7 +173,15 @@ fun MainScaffold(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.Transparent)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.45f),
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
             ) {
                 // Persistent Mini Player levitating above the Navigation Bar
                 MiniPlayer(
@@ -185,7 +198,7 @@ fun MainScaffold(
                     onDismiss = { isMiniPlayerDismissed = true }
                 )
 
-                // Sleek Pill-Dock Bottom Navigation Bar matching Home screen curves
+                // Sleek Floating Pill Bottom Navigation Bar matching MiniPlayer width & curves
                 AnimatedVisibility(
                     visible = showBottomNav,
                     enter = slideInVertically(
@@ -201,21 +214,22 @@ fun MainScaffold(
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
-                            .padding(horizontal = 24.dp, vertical = 6.dp),
+                            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(26.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.98f),
-                            tonalElevation = 4.dp,
+                            shape = RoundedCornerShape(28.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.82f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
+                            tonalElevation = 6.dp,
                             shadowElevation = 8.dp,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(54.dp)
-                                    .padding(horizontal = 6.dp, vertical = 5.dp),
+                                    .height(64.dp)
+                                    .padding(horizontal = 6.dp, vertical = 6.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -224,32 +238,36 @@ fun MainScaffold(
                                     val showLabel = settingsState.tabTitlesMode == "Always" ||
                                             (settingsState.tabTitlesMode == "Selected" && isSelected)
 
-                                    Surface(
-                                        onClick = {
-                                            if (currentRoute != item.route) {
-                                                if (settingsState.rememberLastPage) {
-                                                    settingsViewModel.setLastOpenedRoute(item.route)
-                                                }
-                                                navController.navigate(item.route) {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-                                            }
-                                        },
-                                        shape = PillShape,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                                    Column(
                                         modifier = Modifier
                                             .weight(1f)
                                             .fillMaxHeight()
-                                            .padding(horizontal = 3.dp)
+                                            .clip(RoundedCornerShape(20.dp))
+                                            .clickable {
+                                                if (currentRoute != item.route) {
+                                                    if (settingsState.rememberLastPage) {
+                                                        settingsViewModel.setLastOpenedRoute(item.route)
+                                                    }
+                                                    navController.navigate(item.route) {
+                                                        popUpTo(navController.graph.findStartDestination().id) {
+                                                            saveState = true
+                                                        }
+                                                        launchSingleTop = true
+                                                        restoreState = true
+                                                    }
+                                                }
+                                            },
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxSize(),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(PillShape)
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                                                )
+                                                .padding(horizontal = if (isSelected) 18.dp else 12.dp, vertical = 4.dp),
+                                            contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
                                                 painter = painterResource(
@@ -259,16 +277,16 @@ fun MainScaffold(
                                                 tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.size(20.dp)
                                             )
-                                            if (showLabel && settingsState.tabTitlesMode != "Never") {
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Text(
-                                                    text = item.label,
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1
-                                                )
-                                            }
+                                        }
+                                        if (showLabel && settingsState.tabTitlesMode != "Never") {
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = item.label,
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
                                         }
                                     }
                                 }
@@ -284,7 +302,7 @@ fun MainScaffold(
             startDestination = initialStartDestination,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(top = paddingValues.calculateTopPadding()),
             enterTransition = { slideInHorizontally(initialOffsetX = { 300 }, animationSpec = tween(220)) + fadeIn(tween(200)) },
             exitTransition = { slideOutHorizontally(targetOffsetX = { -300 }, animationSpec = tween(220)) + fadeOut(tween(200)) },
             popEnterTransition = { slideInHorizontally(initialOffsetX = { -300 }, animationSpec = tween(220)) + fadeIn(tween(200)) },
@@ -298,6 +316,11 @@ fun MainScaffold(
                     downloadsViewModel = downloadsViewModel,
                     onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                     onNavigateToShortcut = { route -> navController.navigate(route) },
+                    onNavigateToNowPlaying = {
+                        navController.navigate(Screen.NowPlaying.route) {
+                            launchSingleTop = true
+                        }
+                    },
                     isSearchActive = isSearchActive,
                     onSearchActiveChange = { isSearchActive = it }
                 )

@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +46,7 @@ fun MiniPlayer(
     onTap: () -> Unit,
     onPlayPauseClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onNextClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
@@ -57,16 +60,21 @@ fun MiniPlayer(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .padding(horizontal = 14.dp, vertical = 6.dp)
                 .shadow(
-                    elevation = 12.dp,
+                    elevation = 10.dp,
                     shape = RoundedCornerShape(20.dp),
-                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                    ambientColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                )
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                    shape = RoundedCornerShape(20.dp)
                 )
                 .clip(RoundedCornerShape(20.dp))
                 .clickable(onClick = onTap),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+            color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.94f),
             tonalElevation = 6.dp
         ) {
             Row(
@@ -103,10 +111,10 @@ fun MiniPlayer(
                     )
                 }
 
-                // 48dp Favorite button
+                // Favorite button
                 IconButton(
                     onClick = onFavoriteClick,
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = if (playerState.isFavorite) {
@@ -120,16 +128,16 @@ fun MiniPlayer(
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(2.dp))
 
-                // 48dp Hero Play/Pause button
+                // Hero Play/Pause button
                 FilledIconButton(
                     onClick = onPlayPauseClick,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(44.dp),
                     shape = CircleShape,
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -139,6 +147,21 @@ fun MiniPlayer(
                     Icon(
                         imageVector = if (playerState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = if (playerState.isPlaying) "Pause" else "Play",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(2.dp))
+
+                // Next track button right next to Play/Pause
+                IconButton(
+                    onClick = onNextClick,
+                    modifier = Modifier.size(42.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.SkipNext,
+                        contentDescription = "Next",
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(26.dp)
                     )
                 }

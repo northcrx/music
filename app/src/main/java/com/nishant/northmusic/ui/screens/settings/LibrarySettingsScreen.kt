@@ -47,6 +47,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -140,74 +141,7 @@ fun LibrarySettingsScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = BottomListScrollPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Section 1: Categories
-            item {
-                SettingsSectionTitle("CATEGORIES")
-            }
-            item {
-                SettingsValueRow(
-                    title = "Library categories",
-                    value = "${state.libraryCategories.size} enabled",
-                    subtitle = state.libraryCategories.joinToString(", "),
-                    icon = Icons.Rounded.Category,
-                    onClick = { showCategoriesDialog = true }
-                )
-            }
-
-            // Section 2: Song Filtering
-            item {
-                SettingsSectionTitle("FILTERING")
-            }
-            item {
-                SettingsSliderRow(
-                    title = "Minimum song duration",
-                    value = state.minSongDurationSeconds.toFloat(),
-                    valueRange = 0f..60f,
-                    valueDisplay = { "${it.toInt()}s" },
-                    onValueChange = { settingsViewModel.setMinSongDurationSeconds(it.toInt()) }
-                )
-            }
-            item {
-                SettingsValueRow(
-                    title = "Artist minimum song count",
-                    value = "${state.artistMinSongCount} song(s)",
-                    subtitle = "Minimum tracks required to list an artist",
-                    icon = Icons.Rounded.Person,
-                    onClick = { showArtistMinCountDialog = true }
-                )
-            }
-            item {
-                SettingsValueRow(
-                    title = "Album minimum song count",
-                    value = "${state.albumMinSongCount} song(s)",
-                    subtitle = "Minimum tracks required to list an album",
-                    icon = Icons.Rounded.Album,
-                    onClick = { showAlbumMinCountDialog = true }
-                )
-            }
-            item {
-                SettingsSwitchRow(
-                    title = "Ignore short tracks",
-                    subtitle = "Filter out voice notes and notifications under 30 seconds",
-                    checked = state.ignoreShortTracks,
-                    onCheckedChange = { settingsViewModel.toggleIgnoreShortTracks(it) },
-                    icon = Icons.Rounded.FolderSpecial
-                )
-            }
-
-            // Section 3: Folders & Exclusions
-            item {
-                SettingsSectionTitle("FOLDERS & EXCLUSIONS")
-            }
-            item {
-                SettingsValueRow(
-                    title = "Folders blacklist",
-                    value = if (state.foldersBlacklist.isEmpty()) "0" else "${state.foldersBlacklist.size}",
-                    subtitle = if (state.foldersBlacklist.isEmpty()) "None excluded" else "${state.foldersBlacklist.size} folder(s) excluded",
-                    icon = Icons.Rounded.Block,
-                    onClick = { showBlacklistDialog = true }
-                )
-            }
+            // Section 1: Categories & Filtering
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -217,167 +151,291 @@ fun LibrarySettingsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(18.dp)
+                            .padding(vertical = 8.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Folder,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Column {
-                                Text(
-                                    text = "Scan folders",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Directories included in local media library indexing",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
+                        SettingsSectionTitle("CATEGORIES & FILTERING")
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        SettingsValueRow(
+                            title = "Library categories",
+                            value = "${state.libraryCategories.size} enabled",
+                            subtitle = state.libraryCategories.joinToString(", "),
+                            icon = Icons.Rounded.Category,
+                            onClick = { showCategoriesDialog = true }
+                        )
 
-                        state.musicFolders.forEach { folder ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.CheckCircle,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = folder,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsSliderRow(
+                            title = "Minimum song duration",
+                            value = state.minSongDurationSeconds.toFloat(),
+                            valueRange = 0f..60f,
+                            valueDisplay = { "${it.toInt()}s" },
+                            onValueChange = { settingsViewModel.setMinSongDurationSeconds(it.toInt()) }
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsValueRow(
+                            title = "Artist minimum song count",
+                            value = "${state.artistMinSongCount} song(s)",
+                            subtitle = "Minimum tracks required to list an artist",
+                            icon = Icons.Rounded.Person,
+                            onClick = { showArtistMinCountDialog = true }
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsValueRow(
+                            title = "Album minimum song count",
+                            value = "${state.albumMinSongCount} song(s)",
+                            subtitle = "Minimum tracks required to list an album",
+                            icon = Icons.Rounded.Album,
+                            onClick = { showAlbumMinCountDialog = true }
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsSwitchRow(
+                            title = "Ignore short tracks",
+                            subtitle = "Filter out voice notes and notifications under 30 seconds",
+                            checked = state.ignoreShortTracks,
+                            onCheckedChange = { settingsViewModel.toggleIgnoreShortTracks(it) },
+                            icon = Icons.Rounded.FolderSpecial
+                        )
                     }
                 }
             }
 
-            // Section 4: Sorting & Storage
-            item {
-                SettingsSectionTitle("SORTING & STORAGE")
-            }
-            item {
-                SettingsSwitchRow(
-                    title = "Ignore articles when sorting",
-                    subtitle = "Ignore 'The', 'A', and 'An' at the start of titles & artists",
-                    checked = state.ignoreArticlesWhenSorting,
-                    onCheckedChange = { settingsViewModel.setIgnoreArticlesWhenSorting(it) },
-                    icon = Icons.Rounded.SortByAlpha
-                )
-            }
-            item {
-                SettingsSwitchRow(
-                    title = "Send deleted files to trash",
-                    subtitle = "Move deleted songs to system trash instead of deleting permanently",
-                    checked = state.sendDeletedToTrash,
-                    onCheckedChange = { settingsViewModel.setSendDeletedToTrash(it) },
-                    icon = Icons.Rounded.Delete
-                )
-            }
-
-            // Section 5: History Tracking
-            item {
-                SettingsSectionTitle("HISTORY & INTERVALS")
-            }
-            item {
-                SettingsSwitchRow(
-                    title = "Record listening history",
-                    subtitle = "Track song playback to populate Top tracks and History tabs",
-                    checked = state.recordListeningHistory,
-                    onCheckedChange = { settingsViewModel.setRecordListeningHistory(it) },
-                    icon = Icons.Rounded.History
-                )
-            }
-            item {
-                SettingsValueRow(
-                    title = "History interval",
-                    value = "${state.historyIntervalDays} days",
-                    subtitle = "Duration to retain playback history",
-                    icon = Icons.Rounded.Timer,
-                    onClick = { showHistoryIntervalDialog = true }
-                )
-            }
-            item {
-                SettingsValueRow(
-                    title = "Last added interval",
-                    value = "${state.lastAddedIntervalDays} days",
-                    subtitle = "Duration tracks remain in Last added",
-                    icon = Icons.Rounded.HourglassBottom,
-                    onClick = { showLastAddedIntervalDialog = true }
-                )
-            }
-
-            // Section 6: Diagnostics & Repair
-            item {
-                SettingsSectionTitle("DIAGNOSTICS & ACTIONS")
-            }
-            // Fix Metadata and Artwork Row
+            // Section 2: Folders & Exclusions
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(22.dp))
-                            .clickable {
-                                showMetadataDialog = true
-                                settingsViewModel.startFixingMetadata()
-                            }
-                            .padding(18.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(vertical = 8.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        SettingsSectionTitle("FOLDERS & EXCLUSIONS")
+
+                        SettingsValueRow(
+                            title = "Folders blacklist",
+                            value = if (state.foldersBlacklist.isEmpty()) "0" else "${state.foldersBlacklist.size}",
+                            subtitle = if (state.foldersBlacklist.isEmpty()) "None excluded" else "${state.foldersBlacklist.size} folder(s) excluded",
+                            icon = Icons.Rounded.Block,
+                            onClick = { showBlacklistDialog = true }
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 10.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.AutoFixHigh,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column {
-                                Text(
-                                    text = "Fix metadata and artwork",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Folder,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
                                 )
-                                Text(
-                                    text = "Match missing covers and release tags via iTunes Search API",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Column {
+                                    Text(
+                                        text = "Scan folders",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Directories included in local media library indexing",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            state.musicFolders.forEach { folder ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = folder,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                         }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
+                    }
+                }
+            }
+
+            // Section 3: Sorting & History
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        SettingsSectionTitle("SORTING & HISTORY")
+
+                        SettingsSwitchRow(
+                            title = "Ignore articles when sorting",
+                            subtitle = "Ignore 'The', 'A', and 'An' at the start of titles & artists",
+                            checked = state.ignoreArticlesWhenSorting,
+                            onCheckedChange = { settingsViewModel.setIgnoreArticlesWhenSorting(it) },
+                            icon = Icons.Rounded.SortByAlpha
                         )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsSwitchRow(
+                            title = "Send deleted files to trash",
+                            subtitle = "Move deleted songs to system trash instead of deleting permanently",
+                            checked = state.sendDeletedToTrash,
+                            onCheckedChange = { settingsViewModel.setSendDeletedToTrash(it) },
+                            icon = Icons.Rounded.Delete
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsSwitchRow(
+                            title = "Record listening history",
+                            subtitle = "Track song playback to populate Top tracks and History tabs",
+                            checked = state.recordListeningHistory,
+                            onCheckedChange = { settingsViewModel.setRecordListeningHistory(it) },
+                            icon = Icons.Rounded.History
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsValueRow(
+                            title = "History interval",
+                            value = "${state.historyIntervalDays} days",
+                            subtitle = "Duration to retain playback history",
+                            icon = Icons.Rounded.Timer,
+                            onClick = { showHistoryIntervalDialog = true }
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        SettingsValueRow(
+                            title = "Last added interval",
+                            value = "${state.lastAddedIntervalDays} days",
+                            subtitle = "Duration tracks remain in Last added",
+                            icon = Icons.Rounded.HourglassBottom,
+                            onClick = { showLastAddedIntervalDialog = true }
+                        )
+                    }
+                }
+            }
+
+            // Section 4: Diagnostics & Actions
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        SettingsSectionTitle("METADATA REPAIR")
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showMetadataDialog = true
+                                    settingsViewModel.startFixingMetadata()
+                                }
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.AutoFixHigh,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = "Fix metadata and artwork",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Match missing covers and release tags via iTunes Search API",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
             }

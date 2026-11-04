@@ -29,15 +29,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.NorthWest
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -57,16 +52,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.nishant.northmusic.data.model.Album
 import com.nishant.northmusic.data.model.SampleData
 import com.nishant.northmusic.navigation.BottomListScrollPadding
@@ -82,6 +73,8 @@ fun HomeScreen(
     playerViewModel: PlayerViewModel,
     onNavigateToSettings: () -> Unit,
     onNavigateToShortcut: (String) -> Unit = {},
+    isSearchActive: Boolean = false,
+    onSearchActiveChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by homeViewModel.uiState.collectAsState()
@@ -89,7 +82,6 @@ fun HomeScreen(
     val focusManager = LocalFocusManager.current
 
     var searchQuery by remember { mutableStateOf("") }
-    var isSearchActive by remember { mutableStateOf(false) }
     var searchCategory by remember { mutableStateOf("Songs") }
     val recentSearches = remember {
         mutableStateListOf("The Weeknd", "Daft Punk", "Starboy", "Synthwave", "M83")
@@ -97,7 +89,7 @@ fun HomeScreen(
 
     // Intercept back press when search mode is active
     BackHandler(enabled = isSearchActive) {
-        isSearchActive = false
+        onSearchActiveChange(false)
         searchQuery = ""
         focusManager.clearFocus()
     }
@@ -132,7 +124,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // 80% width search bar
+            // 80% width simple neutral search bar (no accent, no mic)
             Surface(
                 shape = PillShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -149,11 +141,11 @@ fun HomeScreen(
                     Icon(
                         imageVector = if (isSearchActive) Icons.AutoMirrored.Rounded.ArrowBack else Icons.Rounded.Search,
                         contentDescription = if (isSearchActive) "Exit search" else "Search",
-                        tint = if (isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .size(20.dp)
                             .clickable(enabled = isSearchActive) {
-                                isSearchActive = false
+                                onSearchActiveChange(false)
                                 searchQuery = ""
                                 focusManager.clearFocus()
                             }
@@ -176,20 +168,20 @@ fun HomeScreen(
                             value = searchQuery,
                             onValueChange = {
                                 searchQuery = it
-                                if (!isSearchActive) isSearchActive = true
+                                if (!isSearchActive) onSearchActiveChange(true)
                             },
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .onFocusChanged { focusState ->
                                     if (focusState.isFocused && !isSearchActive) {
-                                        isSearchActive = true
+                                        onSearchActiveChange(true)
                                     }
                                 }
                         )
@@ -207,18 +199,6 @@ fun HomeScreen(
                                 contentDescription = "Clear",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    } else {
-                        IconButton(
-                            onClick = { /* TODO: Voice search */ },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Mic,
-                                contentDescription = "Voice search",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -301,7 +281,11 @@ fun HomeScreen(
                             )
                             if (recentSearches.isNotEmpty()) {
                                 TextButton(onClick = { recentSearches.clear() }) {
-                                    Text("Clear")
+                                    Text(
+                                        text = "Clear all",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                         }
@@ -315,7 +299,7 @@ fun HomeScreen(
                                     searchQuery = term
                                     focusManager.clearFocus()
                                 }
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                                .padding(horizontal = 20.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -324,7 +308,7 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.History,
+                                    imageVector = Icons.Rounded.Search,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
@@ -335,43 +319,47 @@ fun HomeScreen(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
-                            Icon(
-                                imageVector = Icons.Rounded.NorthWest,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
+                            IconButton(
+                                onClick = { recentSearches.remove(term) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.NorthWest,
+                                    contentDescription = "Search this",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 } else {
-                    // Search Results List
+                    // Query is present: Show Live Match Count and Matching Items
+                    item {
+                        Text(
+                            text = "${liveSearchResults.size} results found",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                        )
+                    }
+
                     if (liveSearchResults.isEmpty()) {
                         item {
-                            Column(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(40.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                    .padding(vertical = 48.dp),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "No results found for \"$searchQuery\"",
+                                    text = "No matches for \"$searchQuery\"",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     } else {
-                        item {
-                            Text(
-                                text = "${liveSearchResults.size} results found",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-                            )
-                        }
-
-                        items(liveSearchResults) { song ->
+                        items(liveSearchResults, key = { it.id }) { song ->
                             SongItem(
                                 song = song,
                                 isPlaying = playerState.currentSong?.id == song.id && playerState.isPlaying,
@@ -388,50 +376,18 @@ fun HomeScreen(
                 }
             }
         } else {
-            // NORMAL HOME CONTENT
+            // NORMAL HOME CONTENT: Only "For you", "Listen now", and "Your music"
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = BottomListScrollPadding),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // 1. Row of 4 circular shortcut buttons with labels: Top tracks, Last added, History, Favorites
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceAround,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        HomeShortcutButton(
-                            icon = Icons.Rounded.TrendingUp,
-                            label = "Top tracks",
-                            onClick = { onNavigateToShortcut("top_tracks") }
-                        )
-                        HomeShortcutButton(
-                            icon = Icons.Rounded.Schedule,
-                            label = "Last added",
-                            onClick = { onNavigateToShortcut("last_added") }
-                        )
-                        HomeShortcutButton(
-                            icon = Icons.Rounded.History,
-                            label = "History",
-                            onClick = { onNavigateToShortcut("history") }
-                        )
-                        HomeShortcutButton(
-                            icon = Icons.Rounded.Favorite,
-                            label = "Favorites",
-                            onClick = { onNavigateToShortcut("favorites") }
-                        )
-                    }
-                }
-
-                // 2. "For you" section: a mosaic grid of rounded album artwork tiles with one accent colored tile "Shuffle your music"
+                // 1. "For you" section: a mosaic grid of rounded album artwork tiles with one accent colored tile "Shuffle your music"
                 item {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 8.dp)
                     ) {
                         Text(
                             text = "For you",
@@ -542,7 +498,7 @@ fun HomeScreen(
                     }
                 }
 
-                // 3. "Listen now": horizontal album carousel. Title and artist go below artwork as plain text, not clipped
+                // 2. "Listen now": horizontal album carousel. Title and artist go below artwork as plain text, not clipped
                 item {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -598,7 +554,7 @@ fun HomeScreen(
                     }
                 }
 
-                // 4. "Your music": compact song rows
+                // 3. "Your music": compact song rows
                 item {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -627,52 +583,10 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeShortcutButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() }
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.size(56.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
 private fun ForYouAlbumTile(
     album: Album,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
     Surface(
         modifier = modifier
@@ -681,38 +595,33 @@ private fun ForYouAlbumTile(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
             ArtworkPlaceholder(
                 colorSeed = album.colorSeed,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.fillMaxSize()
+                size = 48.dp,
+                shape = RoundedCornerShape(12.dp)
             )
-
-            // Scrim overlay at the bottom for readability
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(Color.Black.copy(alpha = 0.65f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                Column {
-                    Text(
-                        text = album.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = album.artist,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            Column {
+                Text(
+                    text = album.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = album.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

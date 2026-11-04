@@ -17,6 +17,8 @@ data class Song(
             val seconds = durationSeconds % 60
             return "%d:%02d".format(minutes, seconds)
         }
+    val durationFormatted: String
+        get() = formattedDuration
 }
 
 data class Album(
@@ -98,6 +100,10 @@ data class PlayerState(
             val seconds = currentPositionSeconds % 60
             return "%d:%02d".format(minutes, seconds)
         }
+    val progress: Float
+        get() = if (currentSong != null && currentSong.durationSeconds > 0) {
+            currentPositionSeconds.toFloat() / currentSong.durationSeconds.toFloat()
+        } else 0f
 }
 
 data class LyricLine(
@@ -267,5 +273,5 @@ data class SettingsState(
     val appLanguage: String = "System default",
     val backupAndRestoreInfo: String = "No backup found",
     val rotationLock: Boolean = false,
-    val setupDone: Boolean = false
+    val setupDone: Boolean = true
 )

@@ -1,7 +1,11 @@
 package com.nishant.northmusic.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -21,10 +25,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -58,7 +64,6 @@ import com.nishant.northmusic.ui.viewmodels.HomeViewModel
 import com.nishant.northmusic.ui.viewmodels.LibraryViewModel
 import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
-import kotlinx.coroutines.launch
 
 val BottomListScrollPadding = 16.dp
 
@@ -82,6 +87,8 @@ fun MainScaffold(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
+    var isSearchActive by remember { mutableStateOf(false) }
+
     val isFullScreenRoute = currentRoute == Screen.NowPlaying.route ||
             currentRoute == Screen.Equalizer.route ||
             currentRoute == Screen.SetupWizard.route ||
@@ -100,8 +107,9 @@ fun MainScaffold(
             currentRoute == Screen.History.route ||
             currentRoute == Screen.Favorites.route
 
-    // Mini-player is hidden during selection mode on Downloads screen or when full screen is open
-    val isMiniPlayerVisible = !isFullScreenRoute && !downloadsUiState.isSelectionMode
+    // Mini-player is hidden during selection mode on Downloads screen, when full screen is open, or when search is active
+    val isMiniPlayerVisible = !isFullScreenRoute && !downloadsUiState.isSelectionMode && !isSearchActive
+    val showBottomNav = !isFullScreenRoute && !isSearchActive
 
     val initialStartDestination = if (!settingsState.setupDone) {
         Screen.SetupWizard.route
@@ -115,25 +123,30 @@ fun MainScaffold(
         contentWindowInsets = WindowInsets.statusBars,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            if (!isFullScreenRoute) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    // Persistent Mini Player above the Navigation Bar
-                    MiniPlayer(
-                        playerState = playerState,
-                        visible = isMiniPlayerVisible,
-                        onTap = {
-                            navController.navigate(Screen.NowPlaying.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                        onPlayPauseClick = { playerViewModel.togglePlayPause() },
-                        onFavoriteClick = { playerViewModel.toggleFavorite() }
-                    )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Transparent)
+            ) {
+                // Persistent Mini Player levitating above the Navigation Bar
+                MiniPlayer(
+                    playerState = playerState,
+                    visible = isMiniPlayerVisible,
+                    onTap = {
+                        navController.navigate(Screen.NowPlaying.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onPlayPauseClick = { playerViewModel.togglePlayPause() },
+                    onFavoriteClick = { playerViewModel.toggleFavorite() },
+                    onNextClick = { playerViewModel.skipNext() }
+                )
 
+                AnimatedVisibility(
+                    visible = showBottomNav,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                ) {
                     // Navigation Bar (3 items: Home, Library, Downloads)
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -146,6 +159,7 @@ fun MainScaffold(
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
+                                    isSearchActive = false
                                     if (currentRoute != screen.route) {
                                         if (settingsState.rememberLastPage) {
                                             settingsViewModel.setLastOpenedRoute(screen.route)
@@ -160,24 +174,10 @@ fun MainScaffold(
                                     }
                                 },
                                 icon = {
-                                    Box(
-                                        modifier = Modifier.pointerInput(screen.route, settingsState.holdTabToSearch) {
-                                            detectTapGestures(
-                                                onLongPress = {
-                                                    if (settingsState.holdTabToSearch) {
-                                                        coroutineScope.launch {
-                                                            snackbarHostState.showSnackbar("Hold tab to search: focus search (TODO)")
-                                                        }
-                                                    }
-                                                }
-                                            )
-                                        }
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(id = iconRes),
-                                            contentDescription = screen.title
-                                        )
-                                    }
+                                    Icon(
+                                        painter = painterResource(id = iconRes),
+                                        contentDescription = screen.title
+                                    )
                                 },
                                 label = {
                                     Text(
@@ -211,11 +211,15 @@ fun MainScaffold(
                     homeViewModel = homeViewModel,
                     playerViewModel = playerViewModel,
                     onNavigateToSettings = {
+                        isSearchActive = false
                         navController.navigate(Screen.Settings.route)
                     },
                     onNavigateToShortcut = { route ->
+                        isSearchActive = false
                         navController.navigate(route)
-                    }
+                    },
+                    isSearchActive = isSearchActive,
+                    onSearchActiveChange = { isSearchActive = it }
                 )
             }
             composable(Screen.Library.route) {

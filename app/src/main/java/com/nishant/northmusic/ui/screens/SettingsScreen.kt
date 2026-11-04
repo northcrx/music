@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -49,8 +50,8 @@ import com.nishant.northmusic.navigation.BottomListScrollPadding
 
 /**
  * Settings Hub:
- * Shows a clean list of 9 category cards with icon, title, one-line summary, and chevron.
- * Each card navigates to its dedicated sub-screen with a back arrow and top app bar.
+ * Unified settings layout where options are grouped into cohesive sections on one page,
+ * with subtle dividers, eliminating disjointed isolated cards.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,165 +109,206 @@ fun SettingsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = BottomListScrollPadding),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            // 1. Appearance
+            // Group 1: Preferences & Playback
             item {
-                SettingsCategoryHubCard(
-                    title = "Appearance",
-                    summary = "Accent colors, dynamic wallpaper palette & theme mode",
-                    icon = Icons.Rounded.Palette,
-                    onClick = onNavigateToAppearance
+                Text(
+                    text = "PLAYBACK & INTERFACE",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
                 )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsGroupRow(
+                            title = "Appearance",
+                            summary = "Accent colors, dynamic wallpaper palette & theme mode",
+                            icon = Icons.Rounded.Palette,
+                            onClick = onNavigateToAppearance
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
+                        SettingsGroupRow(
+                            title = "Now playing",
+                            summary = "Seek bar style, player controls animation & mini player",
+                            icon = Icons.Rounded.GraphicEq,
+                            onClick = onNavigateToNowPlaying
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
+                        SettingsGroupRow(
+                            title = "Lyrics",
+                            summary = "Translation, transliteration, font size & alignment",
+                            icon = Icons.Rounded.Lyrics,
+                            onClick = onNavigateToLyrics
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
+                        SettingsGroupRow(
+                            title = "Playback",
+                            summary = "Equalizer, gapless transition, normalization & devices",
+                            icon = Icons.Rounded.Tune,
+                            onClick = onNavigateToPlayback
+                        )
+                    }
+                }
             }
 
-            // 2. Now Playing
+            // Group 2: Library & Media
             item {
-                SettingsCategoryHubCard(
-                    title = "Now playing",
-                    summary = "Seek bar style, player controls animation & mini player",
-                    icon = Icons.Rounded.GraphicEq,
-                    onClick = onNavigateToNowPlaying
+                Text(
+                    text = "MEDIA & STORAGE",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
                 )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsGroupRow(
+                            title = "Library",
+                            summary = "Categories, duration filter, scan folders & metadata repair",
+                            icon = Icons.Rounded.FolderSpecial,
+                            onClick = onNavigateToLibrary
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
+                        SettingsGroupRow(
+                            title = "Downloads",
+                            summary = "Save folder, Wi-Fi only, parallel slots & naming pattern",
+                            icon = Icons.Rounded.DownloadDone,
+                            onClick = onNavigateToDownloads
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
+                        SettingsGroupRow(
+                            title = "Network",
+                            summary = "Online metadata lookup & lyrics search providers",
+                            icon = Icons.Rounded.CloudDownload,
+                            onClick = onNavigateToNetwork
+                        )
+                    }
+                }
             }
 
-            // 3. Lyrics
+            // Group 3: System & Info
             item {
-                SettingsCategoryHubCard(
-                    title = "Lyrics",
-                    summary = "Translation, transliteration, font size & alignment",
-                    icon = Icons.Rounded.Lyrics,
-                    onClick = onNavigateToLyrics
+                Text(
+                    text = "SYSTEM & ABOUT",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
                 )
-            }
 
-            // 4. Playback
-            item {
-                SettingsCategoryHubCard(
-                    title = "Playback",
-                    summary = "Equalizer, gapless transition, normalization & devices",
-                    icon = Icons.Rounded.Tune,
-                    onClick = onNavigateToPlayback
-                )
-            }
-
-            // 5. Library
-            item {
-                SettingsCategoryHubCard(
-                    title = "Library",
-                    summary = "Categories, duration filter, scan folders & metadata repair",
-                    icon = Icons.Rounded.FolderSpecial,
-                    onClick = onNavigateToLibrary
-                )
-            }
-
-            // 6. Downloads
-            item {
-                SettingsCategoryHubCard(
-                    title = "Downloads",
-                    summary = "Save folder, Wi-Fi only, parallel slots & naming pattern",
-                    icon = Icons.Rounded.DownloadDone,
-                    onClick = onNavigateToDownloads
-                )
-            }
-
-            // 7. Network
-            item {
-                SettingsCategoryHubCard(
-                    title = "Network",
-                    summary = "Online metadata lookup & lyrics search providers",
-                    icon = Icons.Rounded.CloudDownload,
-                    onClick = onNavigateToNetwork
-                )
-            }
-
-            // 8. Advanced
-            item {
-                SettingsCategoryHubCard(
-                    title = "Advanced",
-                    summary = "Language, backup & restore, rotation lock & setup wizard",
-                    icon = Icons.Rounded.SettingsSuggest,
-                    onClick = onNavigateToAdvanced
-                )
-            }
-
-            // 9. About
-            item {
-                SettingsCategoryHubCard(
-                    title = "About",
-                    summary = "Version 1.0.0, open source licenses & legal info",
-                    icon = Icons.Rounded.Info,
-                    onClick = onNavigateToAbout
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsGroupRow(
+                            title = "Advanced",
+                            summary = "Language, backup & restore, rotation lock & setup wizard",
+                            icon = Icons.Rounded.SettingsSuggest,
+                            onClick = onNavigateToAdvanced
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
+                        SettingsGroupRow(
+                            title = "About",
+                            summary = "Version 1.0.0, open source licenses & legal info",
+                            icon = Icons.Rounded.Info,
+                            onClick = onNavigateToAbout
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun SettingsCategoryHubCard(
+fun SettingsGroupRow(
     title: String,
     summary: String,
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(22.dp))
-                .clickable { onClick() }
-                .padding(horizontal = 18.dp, vertical = 18.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.size(40.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.size(46.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.Center) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = summary,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
 
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                contentDescription = "Open $title",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp)
-            )
+            Column(verticalArrangement = Arrangement.Center) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+            contentDescription = "Open $title",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.size(14.dp)
+        )
     }
 }

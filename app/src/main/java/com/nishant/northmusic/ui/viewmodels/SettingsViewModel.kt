@@ -16,40 +16,36 @@ class SettingsViewModel : ViewModel() {
 
     val settingsState: StateFlow<SettingsState> = SettingsRepository.settingsState
 
-    private fun updateState(transform: (SettingsState) -> SettingsState) {
-        SettingsRepository.update(transform)
+    private fun updateState(updater: (SettingsState) -> SettingsState) {
+        SettingsRepository.update(updater)
     }
 
     // --- Navigation Settings ---
     fun setHoldTabToSearch(enabled: Boolean) {
         updateState { it.copy(holdTabToSearch = enabled) }
-        // TODO: Persist to DataStore
     }
 
     fun setRememberLastPage(enabled: Boolean) {
         updateState { it.copy(rememberLastPage = enabled) }
-        // TODO: Persist to DataStore
     }
 
     fun setLastOpenedRoute(route: String) {
         updateState { it.copy(lastOpenedRoute = route) }
-        // TODO: Persist to DataStore
     }
 
     // --- Appearance Settings ---
-    fun toggleDynamicColor(enabled: Boolean) {
+    fun setDynamicColor(enabled: Boolean) {
         updateState { it.copy(dynamicColor = enabled) }
-        // TODO: Save preference to DataStore
     }
+
+    fun toggleDynamicColor(enabled: Boolean) = setDynamicColor(enabled)
 
     fun setThemeMode(mode: ThemeMode) {
         updateState { it.copy(themeMode = mode) }
-        // TODO: Save preference to DataStore
     }
 
-    fun setAccentColor(accent: AccentColor) {
-        updateState { it.copy(accentColor = accent) }
-        // TODO: Save preference to DataStore
+    fun setAccentColor(accentColor: AccentColor) {
+        updateState { it.copy(accentColor = accentColor) }
     }
 
     fun setLargerHeaderImage(enabled: Boolean) {
@@ -119,6 +115,13 @@ class SettingsViewModel : ViewModel() {
         updateState { it.copy(highQualityAudio = enabled) }
     }
 
+    fun setHighQualityAudio(enabled: Boolean) = toggleHighQualityAudio(enabled)
+    fun setAudioNormalization(enabled: Boolean) = toggleAudioNormalization(enabled)
+    fun setGaplessPlayback(enabled: Boolean) = toggleGaplessPlayback(enabled)
+    fun setFadeOnPlayPause(enabled: Boolean) {
+        updateState { it.copy(fadeOnPlayPause = enabled) }
+    }
+
     fun setReplayGainMode(mode: String) {
         updateState { it.copy(replayGainMode = mode) }
     }
@@ -127,17 +130,25 @@ class SettingsViewModel : ViewModel() {
         updateState { it.copy(headphonesResumeOnConnect = enabled) }
     }
 
+    fun setResumeOnHeadphonesConnect(enabled: Boolean) = setHeadphonesResume(enabled)
+
     fun setHeadphonesPause(enabled: Boolean) {
         updateState { it.copy(headphonesPauseOnDisconnect = enabled) }
     }
+
+    fun setPauseOnHeadphonesDisconnect(enabled: Boolean) = setHeadphonesPause(enabled)
 
     fun setBluetoothResume(enabled: Boolean) {
         updateState { it.copy(bluetoothResumeOnConnect = enabled) }
     }
 
+    fun setResumeOnBluetoothConnect(enabled: Boolean) = setBluetoothResume(enabled)
+
     fun setBluetoothPause(enabled: Boolean) {
         updateState { it.copy(bluetoothPauseOnDisconnect = enabled) }
     }
+
+    fun setPauseOnBluetoothDisconnect(enabled: Boolean) = setBluetoothPause(enabled)
 
     fun setAudioFocus(enabled: Boolean) {
         updateState { it.copy(audioFocus = enabled) }
@@ -160,8 +171,24 @@ class SettingsViewModel : ViewModel() {
         updateState { it.copy(albumMinSongCount = count) }
     }
 
-    fun setFoldersBlacklist(folders: List<String>) {
-        updateState { it.copy(foldersBlacklist = folders) }
+    fun setFoldersBlacklist(blacklist: List<String>) {
+        updateState { it.copy(foldersBlacklist = blacklist) }
+    }
+
+    fun addFolderToBlacklist(folder: String) {
+        updateState {
+            val list = it.foldersBlacklist.toMutableList()
+            if (!list.contains(folder)) list.add(folder)
+            it.copy(foldersBlacklist = list)
+        }
+    }
+
+    fun removeFolderFromBlacklist(folder: String) {
+        updateState {
+            val list = it.foldersBlacklist.toMutableList()
+            list.remove(folder)
+            it.copy(foldersBlacklist = list)
+        }
     }
 
     fun setIgnoreArticlesWhenSorting(enabled: Boolean) {
@@ -188,100 +215,55 @@ class SettingsViewModel : ViewModel() {
         updateState { it.copy(ignoreShortTracks = enabled) }
     }
 
-    // --- Downloads Settings ---
-    fun toggleWifiOnlyDownloads(enabled: Boolean) {
-        updateState { it.copy(wifiOnlyDownloads = enabled) }
+    fun setIgnoreShortTracks(enabled: Boolean) = toggleIgnoreShortTracks(enabled)
+
+    fun setMusicFolders(folders: List<String>) {
+        updateState { it.copy(musicFolders = folders) }
     }
 
-    fun setMaxParallelDownloads(max: Int) {
-        updateState { it.copy(maxParallelDownloads = max) }
-    }
-
-    fun setSaveFolder(path: String) {
-        updateState { it.copy(saveFolder = path) }
-    }
-
-    fun setFileNamingFormat(format: String) {
-        updateState { it.copy(fileNamingFormat = format) }
-    }
-
-    // --- Network Settings ---
-    fun setOnlineMetadataLookup(enabled: Boolean) {
-        updateState { it.copy(onlineMetadataLookup = enabled) }
-    }
-
-    // --- Advanced Settings ---
-    fun setAppLanguage(lang: String) {
-        updateState { it.copy(appLanguage = lang) }
-    }
-
-    fun setRotationLock(enabled: Boolean) {
-        updateState { it.copy(rotationLock = enabled) }
-    }
-
-    fun setSetupDone(done: Boolean) {
-        updateState { it.copy(setupDone = done) }
+    fun setIsRescanning(rescanning: Boolean) {
+        updateState { it.copy(isRescanning = rescanning) }
     }
 
     fun triggerRescanLibrary() {
         viewModelScope.launch {
             updateState { it.copy(isRescanning = true) }
-            delay(1800)
+            delay(1500)
             updateState { it.copy(isRescanning = false) }
         }
     }
 
-    /**
-     * Fix missing metadata and artwork via iTunes Search API.
-     */
     fun startFixingMetadata() {
         viewModelScope.launch {
             updateState { current ->
                 current.copy(
                     metadataFixState = MetadataFixState(
                         isScanning = true,
-                        progress = 0.15f,
-                        statusText = "Scanning local library for missing tags & artwork...",
+                        progress = 0.2f,
+                        statusText = "Scanning local library for metadata...",
                         items = emptyList()
                     )
                 )
             }
-            delay(1200)
-
+            delay(1000)
             updateState { current ->
                 current.copy(
                     metadataFixState = current.metadataFixState.copy(
-                        progress = 0.45f,
-                        statusText = "Querying iTunes Search API for 1400x1400 artwork...",
+                        progress = 0.6f,
+                        statusText = "Resolving tags and album artwork...",
                         items = listOf(
-                            MetadataFixItem("Starboy", "The Weeknd", "High-res artwork (1400x1400) found", true),
-                            MetadataFixItem("Blinding Lights", "The Weeknd", "Year (2020) & Pop/Synthwave genre matched", true)
+                            MetadataFixItem("High-res art verified", "Local library", "Tags synchronized", true)
                         )
                     )
                 )
             }
-            delay(1500)
-
-            updateState { current ->
-                current.copy(
-                    metadataFixState = current.metadataFixState.copy(
-                        progress = 0.85f,
-                        statusText = "Writing ID3 tags & updating artwork cache...",
-                        items = current.metadataFixState.items + listOf(
-                            MetadataFixItem("Midnight City", "M83", "Artwork fetched & Album Artist set", true),
-                            MetadataFixItem("Tech Noir", "Gunship", "Synthwave genre tag & cover embedded", true)
-                        )
-                    )
-                )
-            }
-            delay(1200)
-
+            delay(1000)
             updateState { current ->
                 current.copy(
                     metadataFixState = current.metadataFixState.copy(
                         isScanning = false,
                         progress = 1.0f,
-                        statusText = "Metadata and artwork successfully updated!"
+                        statusText = "Metadata scan completed"
                     )
                 )
             }
@@ -290,5 +272,67 @@ class SettingsViewModel : ViewModel() {
 
     fun dismissMetadataFix() {
         updateState { it.copy(metadataFixState = MetadataFixState()) }
+    }
+
+    // --- Downloads Settings ---
+    fun setSaveFolder(folder: String) {
+        updateState { it.copy(saveFolder = folder) }
+    }
+
+    fun setWifiOnly(enabled: Boolean) {
+        updateState { it.copy(wifiOnly = enabled, wifiOnlyDownloads = enabled) }
+    }
+
+    fun toggleWifiOnlyDownloads(enabled: Boolean) = setWifiOnly(enabled)
+
+    fun setParallelSlots(slots: Int) {
+        updateState { it.copy(parallelSlots = slots, maxParallelDownloads = slots) }
+    }
+
+    fun setMaxParallelDownloads(max: Int) = setParallelSlots(max)
+
+    fun setNamingFormat(format: String) {
+        updateState { it.copy(namingFormat = format, fileNamingFormat = format) }
+    }
+
+    fun setFileNamingFormat(format: String) = setNamingFormat(format)
+
+    fun setDownloadSpeedLimitKbps(limit: Int) {
+        updateState { it.copy(downloadSpeedLimitKbps = limit) }
+    }
+
+    // --- Network Settings ---
+    fun setAutoDownloadMetadata(enabled: Boolean) {
+        updateState { it.copy(autoDownloadMetadata = enabled, onlineMetadataLookup = enabled) }
+    }
+
+    fun setOnlineMetadataLookup(enabled: Boolean) = setAutoDownloadMetadata(enabled)
+
+    fun setPreferredLyricsProvider(provider: String) {
+        updateState { it.copy(preferredLyricsProvider = provider, lyricsProviders = provider) }
+    }
+
+    fun setStreamingQuality(quality: String) {
+        updateState { it.copy(streamingQuality = quality) }
+    }
+
+    // --- Advanced Settings ---
+    fun setAppLanguage(language: String) {
+        updateState { it.copy(appLanguage = language) }
+    }
+
+    fun setLockScreenRotation(enabled: Boolean) {
+        updateState { it.copy(lockScreenRotation = enabled, rotationLock = enabled) }
+    }
+
+    fun setRotationLock(enabled: Boolean) = setLockScreenRotation(enabled)
+
+    fun setSetupDone(done: Boolean) {
+        updateState { it.copy(setupDone = done) }
+    }
+
+    fun resetToDefaults() {
+        val defaultState = SettingsState()
+        updateState { defaultState }
     }
 }

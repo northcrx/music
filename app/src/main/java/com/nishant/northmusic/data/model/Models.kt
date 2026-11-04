@@ -1,24 +1,63 @@
 package com.nishant.northmusic.data.model
 
+import android.content.ContentUris
+import android.net.Uri
+
 data class Song(
     val id: String,
     val title: String,
     val artist: String,
     val album: String,
     val durationSeconds: Int,
-    val colorSeed: Long = 0xFF2DD4BF,
     val isFavorite: Boolean = false,
-    val isHighQuality: Boolean = true,
-    val genre: String = "Pop"
+    val colorSeed: Long = 0xFF2DD4BF,
+    val lyrics: List<LyricLine> = emptyList(),
+    val albumId: Long = 0L,
+    val artistId: Long = 0L,
+    val filePath: String = "",
+    val relativeFolder: String = "",
+    val dateAdded: Long = 0L,
+    val year: Int = 0,
+    val sizeBytes: Long = 0L,
+    val isHighQuality: Boolean = false,
+    val genre: String = "",
+    val trackNumber: Int = 0
 ) {
+    val contentUri: Uri
+        get() = ContentUris.withAppendedId(
+            android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            id.toLongOrNull() ?: 0L
+        )
+
+    val albumArtUri: Uri
+        get() = ContentUris.withAppendedId(
+            Uri.parse("content://media/external/audio/albumart"),
+            albumId
+        )
+
     val formattedDuration: String
         get() {
             val minutes = durationSeconds / 60
             val seconds = durationSeconds % 60
             return "%d:%02d".format(minutes, seconds)
         }
-    val durationFormatted: String
+
+    val formattedCurrentPosition: String
         get() = formattedDuration
+}
+
+data class LyricLine(
+    val timestampSeconds: Float = 0f,
+    val text: String = "",
+    val translation: String? = null,
+    val timeSeconds: Int = timestampSeconds.toInt()
+) {
+    constructor(timeSeconds: Int, text: String) : this(
+        timestampSeconds = timeSeconds.toFloat(),
+        text = text,
+        translation = null,
+        timeSeconds = timeSeconds
+    )
 }
 
 data class Album(
@@ -27,8 +66,15 @@ data class Album(
     val artist: String,
     val songCount: Int,
     val year: Int,
-    val colorSeed: Long = 0xFF2DD4BF
-)
+    val colorSeed: Long = 0xFF2DD4BF,
+    val albumId: Long = id.toLongOrNull() ?: 0L
+) {
+    val albumArtUri: Uri
+        get() = ContentUris.withAppendedId(
+            Uri.parse("content://media/external/audio/albumart"),
+            albumId
+        )
+}
 
 data class Artist(
     val id: String,
@@ -72,27 +118,20 @@ data class DownloadItem(
     val colorSeed: Long = 0xFF2DD4BF
 )
 
-enum class LibraryFilter(val label: String) {
-    SONGS("Songs"),
-    ALBUMS("Albums"),
-    ARTISTS("Artists"),
-    PLAYLISTS("Playlists"),
-    FOLDERS("Folders")
-}
-
 enum class RepeatMode {
     OFF,
-    ONE,
-    ALL
+    ALL,
+    ONE
 }
 
 data class PlayerState(
     val currentSong: Song? = null,
     val isPlaying: Boolean = false,
-    val currentPositionSeconds: Int = 42,
+    val currentPositionSeconds: Int = 0,
     val isShuffle: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.OFF,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val volume: Float = 0.8f
 ) {
     val formattedCurrentPosition: String
         get() {
@@ -106,10 +145,36 @@ data class PlayerState(
         } else 0f
 }
 
-data class LyricLine(
-    val timeSeconds: Int,
-    val text: String
+enum class LibraryFilter(val label: String) {
+    SONGS("Songs"),
+    ALBUMS("Albums"),
+    ARTISTS("Artists"),
+    PLAYLISTS("Playlists"),
+    FOLDERS("Folders")
+}
+
+data class BottomNavItem(
+    val route: String,
+    val label: String,
+    val selectedIconRes: Int,
+    val unselectedIconRes: Int
 )
+
+enum class ThemeMode(val label: String) {
+    SYSTEM("System default"),
+    DARK("Dark"),
+    LIGHT("Light")
+}
+
+enum class AccentColor(val label: String, val hexColor: Long) {
+    TEAL("Teal", 0xFF0D9488),
+    BLUE("Blue", 0xFF2563EB),
+    GREEN("Green", 0xFF16A34A),
+    ORANGE("Orange", 0xFFEA580C),
+    ROSE("Rose", 0xFFE11D48),
+    RED("Red", 0xFFDC2626),
+    PURPLE("Purple", 0xFF7C3AED)
+}
 
 enum class AudioOutputDevice(val label: String) {
     BLUETOOTH("Bluetooth"),
@@ -173,22 +238,6 @@ data class EqualizerState(
         get() = profiles[currentDevice] ?: DeviceProfile()
 }
 
-enum class ThemeMode(val label: String) {
-    SYSTEM("System"),
-    DARK("Dark"),
-    LIGHT("Light")
-}
-
-enum class AccentColor(val label: String, val hexColor: Long) {
-    TEAL("Teal", 0xFF2DD4BF),
-    BLUE("Blue", 0xFF388AF6),
-    GREEN("Green", 0xFF4CAF50),
-    ORANGE("Orange", 0xFFFF9800),
-    ROSE("Rose", 0xFFF43F5E),
-    RED("Red", 0xFFEF4444),
-    PURPLE("Purple", 0xFF8B5CF6)
-}
-
 data class MetadataFixItem(
     val songTitle: String,
     val artist: String,
@@ -237,6 +286,7 @@ data class SettingsState(
     val audioNormalization: Boolean = true,
     val highQualityAudio: Boolean = true,
     val replayGainMode: String = "None", // "Album", "Track", "None"
+    val fadeOnPlayPause: Boolean = true,
     val headphonesResumeOnConnect: Boolean = false,
     val headphonesPauseOnDisconnect: Boolean = true,
     val bluetoothResumeOnConnect: Boolean = false,
@@ -261,17 +311,26 @@ data class SettingsState(
 
     // 7. Downloads
     val saveFolder: String = "/storage/emulated/0/Music/Downloads",
-    val wifiOnlyDownloads: Boolean = true,
-    val maxParallelDownloads: Int = 3,
-    val fileNamingFormat: String = "{artist} - {title}",
+    val wifiOnly: Boolean = false,
+    val wifiOnlyDownloads: Boolean = wifiOnly,
+    val parallelSlots: Int = 3,
+    val maxParallelDownloads: Int = parallelSlots,
+    val namingFormat: String = "{artist} - {title}", // "{artist} - {title}", "{track} {title}", etc.
+    val fileNamingFormat: String = namingFormat,
+    val downloadSpeedLimitKbps: Int = 0, // 0 = unlimited
 
-    // 8. Network
-    val onlineMetadataLookup: Boolean = true,
-    val lyricsProviders: String = "LRC Lib, NetEase",
+    // 8. Network & Metadata
+    val autoDownloadMetadata: Boolean = true,
+    val onlineMetadataLookup: Boolean = autoDownloadMetadata,
+    val preferredLyricsProvider: String = "LRC-Lib",
+    val lyricsProviders: String = preferredLyricsProvider,
+    val streamingQuality: String = "Auto",
 
-    // 9. Advanced & Setup
+    // 9. Advanced
     val appLanguage: String = "System default",
+    val lockScreenRotation: Boolean = false,
+    val rotationLock: Boolean = lockScreenRotation,
     val backupAndRestoreInfo: String = "No backup found",
-    val rotationLock: Boolean = false,
+    val lastBackupDate: String? = null,
     val setupDone: Boolean = true
 )

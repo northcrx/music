@@ -1,5 +1,9 @@
 package com.nishant.northmusic.ui.screens.setup
 
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -38,6 +42,7 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,6 +50,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +62,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -68,14 +75,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nishant.northmusic.data.model.AccentColor
 import com.nishant.northmusic.data.model.ThemeMode
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
+import com.nishant.northmusic.util.PermissionUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -163,12 +175,16 @@ fun SetupWizardScreen(
                     },
                     shape = PillShape
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Back")
                 }
             } else {
-                Spacer(modifier = Modifier.width(48.dp))
+                Spacer(modifier = Modifier.width(1.dp))
             }
 
             Button(
@@ -182,14 +198,9 @@ fun SetupWizardScreen(
                         onComplete()
                     }
                 },
-                shape = PillShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier.height(48.dp)
+                shape = PillShape
             ) {
-                Text(if (pagerState.currentPage == 4) "Start listening" else "Next")
+                Text(if (pagerState.currentPage == 4) "Get Started" else "Next")
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
                     imageVector = if (pagerState.currentPage == 4) Icons.Rounded.PlayArrow else Icons.AutoMirrored.Rounded.ArrowForward,
@@ -210,18 +221,17 @@ private fun StepWelcome() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Big 84dp Logo Placeholder
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(84.dp)
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.size(110.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Rounded.MusicNote,
-                    contentDescription = "Logo",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(44.dp)
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(52.dp)
                 )
             }
         }
@@ -229,8 +239,8 @@ private fun StepWelcome() {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Welcome to North Music",
-            style = MaterialTheme.typography.headlineMedium,
+            text = "Welcome to North",
+            style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
@@ -239,7 +249,7 @@ private fun StepWelcome() {
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "A sleek, responsive nocturnal music player designed with Material 3 Expressive. High-res audio, live synchronized lyrics, and offline downloads.",
+            text = "A sleek, responsive nocturnal music player designed with Material 3 Expressive. High-res audio, live synchronized lyrics, and offline playback.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -250,13 +260,47 @@ private fun StepWelcome() {
 
 @Composable
 private fun StepPermissions() {
-    var audioGranted by remember { mutableStateOf(true) }
-    var notifGranted by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var audioGranted by remember { mutableStateOf(PermissionUtils.hasAudioPermission(context)) }
+    var notifGranted by remember { mutableStateOf(PermissionUtils.hasNotificationPermission(context)) }
+    var audioDeniedOnce by remember { mutableStateOf(false) }
+
+    // Recheck permissions when returning from settings
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                audioGranted = PermissionUtils.hasAudioPermission(context)
+                notifGranted = PermissionUtils.hasNotificationPermission(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        audioGranted = isGranted
+        if (!isGranted) {
+            audioDeniedOnce = true
+        }
+    }
+
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        notifGranted = isGranted
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center
     ) {
         Text(
@@ -269,7 +313,7 @@ private fun StepPermissions() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "North Music requires access to your audio library and foreground playback notifications.",
+            text = "North Music needs access to your local audio files to scan and play your music library, plus notifications for media playback controls.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -281,8 +325,9 @@ private fun StepPermissions() {
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    audioGranted = !audioGranted
-                    // TODO: Request READ_MEDIA_AUDIO / READ_EXTERNAL_STORAGE permission
+                    if (!audioGranted) {
+                        audioPermissionLauncher.launch(PermissionUtils.getRequiredAudioPermission())
+                    }
                 },
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
@@ -292,10 +337,23 @@ private fun StepPermissions() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(Icons.Rounded.AudioFile, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                Icon(
+                    Icons.Rounded.AudioFile,
+                    contentDescription = null,
+                    tint = if (audioGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(28.dp)
+                )
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Audio files", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("Scan and play music stored on device", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "Audio files",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = if (audioGranted) "Permission granted" else "Tap to grant access to your audio library",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Icon(
                     imageVector = if (audioGranted) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
@@ -305,34 +363,99 @@ private fun StepPermissions() {
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Notification Permission Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    notifGranted = !notifGranted
-                    // TODO: Request POST_NOTIFICATIONS permission (Android 13+)
-                },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Row(
-                modifier = Modifier.padding(18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(Icons.Rounded.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Playback notifications", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("Background controls and lockscreen widget", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Icon(
-                    imageVector = if (notifGranted) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = if (notifGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        // If audio permission is denied, show friendly explanation and settings button
+        AnimatedVisibility(visible = !audioGranted && audioDeniedOnce) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Audio permission is required to index and play local music. If you clicked 'Don't ask again', please allow it in system settings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FilledTonalButton(
+                            onClick = {
+                                audioPermissionLauncher.launch(PermissionUtils.getRequiredAudioPermission())
+                            },
+                            shape = PillShape,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Grant access")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                PermissionUtils.openAppSettings(context)
+                            },
+                            shape = PillShape,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Rounded.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Settings")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Notification Permission Card (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (!notifGranted) {
+                            notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    },
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+            ) {
+                Row(
+                    modifier = Modifier.padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.Notifications,
+                        contentDescription = null,
+                        tint = if (notifGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Playback notifications",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (notifGranted) "Permission granted" else "Show background and lockscreen playback controls",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = if (notifGranted) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = if (notifGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
             }
         }
     }
@@ -361,56 +484,23 @@ private fun StepAppearance(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Select your personal accent color and dark mode preference.",
+            text = "Pick an accent color and theme mode. You can adjust these anytime in Settings.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Accent Swatches
-        Text("ACCENT COLOR", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AccentColor.entries.forEach { accent ->
-                val isSelected = selectedAccent == accent
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .background(Color(accent.hexColor))
-                        .clickable { settingsViewModel.setAccentColor(accent) }
-                        .then(
-                            if (isSelected) {
-                                Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                            } else Modifier
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isSelected) {
-                        Icon(Icons.Rounded.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                    }
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Theme mode
-        Text("THEME MODE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = "THEME MODE",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-        SingleChoiceSegmentedButtonRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-        ) {
+        Spacer(modifier = Modifier.height(8.dp))
+
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             ThemeMode.entries.forEachIndexed { index, mode ->
                 SegmentedButton(
                     selected = themeMode == mode,
@@ -422,50 +512,61 @@ private fun StepAppearance(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Live preview pill
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        Text(
+            text = "ACCENT COLOR",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp))
+            AccentColor.entries.forEach { accent ->
+                val isSelected = selectedAccent == accent
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(accent.hexColor))
+                        .clickable { settingsViewModel.setAccentColor(accent) }
+                        .then(
+                            if (isSelected) {
+                                Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                            } else Modifier
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
-                Text("Live theme preview active", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             }
         }
     }
 }
 
 @Composable
-private fun StepFolders(folders: List<String>) {
-    val selectedFolders = remember { mutableStateListOf(*folders.toTypedArray()) }
-    var isScanning by remember { mutableStateOf(false) }
-    var scanProgress by remember { mutableStateOf(0f) }
-    var scanResultText by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
-
-    val infiniteTransition = rememberInfiniteTransition(label = "scan")
-    val rotationAngle by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing)),
-        label = "rotation"
-    )
+private fun StepFolders(initialFolders: List<String>) {
+    val selectedFolders = remember { mutableStateListOf(*initialFolders.toTypedArray()) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center
     ) {
         Text(
@@ -478,95 +579,69 @@ private fun StepFolders(folders: List<String>) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Detected audio folders on your internal storage:",
+            text = "North Music automatically scans your device's audio folders. You can customize scanning in Settings > Library.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        folders.forEach { folder ->
-            val checked = selectedFolders.contains(folder)
+        val commonFolders = listOf(
+            "/storage/emulated/0/Music" to "Standard Music Folder",
+            "/storage/emulated/0/Download" to "Downloads & Audio",
+            "/storage/emulated/0/Podcasts" to "Podcasts & Recordings"
+        )
+
+        commonFolders.forEach { (path, desc) ->
+            val isChecked = selectedFolders.contains(path)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
                     .clickable {
-                        if (checked) selectedFolders.remove(folder) else selectedFolders.add(folder)
+                        if (isChecked) selectedFolders.remove(path) else selectedFolders.add(path)
                     },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Icon(Icons.Rounded.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(folder, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Icon(
+                        Icons.Rounded.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(path.substringAfterLast('/'), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Checkbox(
-                        checked = checked,
-                        onCheckedChange = { isChecked ->
-                            if (isChecked) selectedFolders.add(folder) else selectedFolders.remove(folder)
+                        checked = isChecked,
+                        onCheckedChange = { checked ->
+                            if (checked) selectedFolders.add(path) else selectedFolders.remove(path)
                         },
                         colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
                     )
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (isScanning) {
-            LinearProgressIndicator(
-                progress = { scanProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(CircleShape),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        if (scanResultText.isNotEmpty()) {
-            Text(scanResultText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        Button(
-            onClick = {
-                scope.launch {
-                    isScanning = true
-                    scanProgress = 0.2f
-                    delay(500)
-                    scanProgress = 0.65f
-                    delay(600)
-                    scanProgress = 1.0f
-                    isScanning = false
-                    scanResultText = "Found 10 tracks across ${selectedFolders.size} folders"
-                }
-            },
-            enabled = !isScanning,
-            shape = PillShape,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Sync,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(18.dp)
-                    .then(if (isScanning) Modifier.rotate(rotationAngle) else Modifier)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(if (isScanning) "Scanning now..." else "Scan now")
-        }
     }
 }
 
 @Composable
 private fun StepDone() {
+    val infiniteTransition = rememberInfiniteTransition(label = "done_spin")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(animation = tween(4000, easing = LinearEasing)),
+        label = "rotation"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -574,36 +649,38 @@ private fun StepDone() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(80.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(44.dp)
-                )
-            }
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Rounded.Sync,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                modifier = Modifier
+                    .size(120.dp)
+                    .rotate(rotation)
+            )
+            Icon(
+                imageVector = Icons.Rounded.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(64.dp)
+            )
         }
 
         Spacer(modifier = Modifier.height(28.dp))
 
         Text(
-            text = "You're All Set",
-            style = MaterialTheme.typography.headlineMedium,
+            text = "You're All Set!",
+            style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Your library has been prepared with custom themes and audio configurations.",
-            style = MaterialTheme.typography.bodyMedium,
+            text = "Your music library is ready to explore. Tap Get Started to begin listening.",
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )

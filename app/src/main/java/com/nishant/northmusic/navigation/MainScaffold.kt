@@ -43,7 +43,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.nishant.northmusic.data.model.SampleData
 import com.nishant.northmusic.ui.components.MiniPlayer
 import com.nishant.northmusic.ui.screens.DownloadsScreen
 import com.nishant.northmusic.ui.screens.EqualizerScreen
@@ -85,6 +84,7 @@ fun MainScaffold(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val playerState by playerViewModel.playerState.collectAsState()
+    val homeUiState by homeViewModel.uiState.collectAsState()
     val downloadsUiState by downloadsViewModel.uiState.collectAsState()
     val settingsState by settingsViewModel.settingsState.collectAsState()
 
@@ -149,34 +149,36 @@ fun MainScaffold(
                     },
                     onPlayPauseClick = { playerViewModel.togglePlayPause() },
                     onFavoriteClick = { playerViewModel.toggleFavorite() },
-                    onNextClick = { playerViewModel.skipNext() },
+                    onNextClick = { playerViewModel.skipToNext() },
                     onDismiss = { isMiniPlayerDismissed = true }
                 )
 
+                // 2 or 3-Item Clean Bottom Navigation Bar
                 AnimatedVisibility(
                     visible = showBottomNav,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                    enter = slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(durationMillis = 200)
+                    ) + fadeIn(animationSpec = tween(durationMillis = 150)),
+                    exit = slideOutVertically(
+                        targetOffsetY = { it },
+                        animationSpec = tween(durationMillis = 180)
+                    ) + fadeOut(animationSpec = tween(durationMillis = 120))
                 ) {
-                    // Navigation Bar (3 items: Home, Library, Downloads)
-                    // Seamless connection to background: surface color, 0dp tonal elevation
                     NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 0.dp
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ) {
-                        BottomNavItems.forEach { screen ->
-                            val selected = currentRoute == screen.route
-                            val iconRes = if (selected) screen.filledIconRes else screen.outlinedIconRes
-
+                        BottomNavItems.forEach { item ->
+                            val isSelected = currentRoute == item.route
                             NavigationBarItem(
-                                selected = selected,
+                                selected = isSelected,
                                 onClick = {
-                                    isSearchActive = false
-                                    if (currentRoute != screen.route) {
+                                    if (currentRoute != item.route) {
                                         if (settingsState.rememberLastPage) {
-                                            settingsViewModel.setLastOpenedRoute(screen.route)
+                                            settingsViewModel.setLastOpenedRoute(item.route)
                                         }
-                                        navController.navigate(screen.route) {
+                                        navController.navigate(item.route) {
                                             popUpTo(navController.graph.findStartDestination().id) {
                                                 saveState = true
                                             }
@@ -187,20 +189,22 @@ fun MainScaffold(
                                 },
                                 icon = {
                                     Icon(
-                                        painter = painterResource(id = iconRes),
-                                        contentDescription = screen.title
+                                        painter = painterResource(
+                                            id = if (isSelected) item.selectedIconRes else item.unselectedIconRes
+                                        ),
+                                        contentDescription = item.label
                                     )
                                 },
                                 label = {
                                     Text(
-                                        text = screen.title,
+                                        text = item.label,
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -210,50 +214,25 @@ fun MainScaffold(
                 }
             }
         }
-    ) { innerPadding ->
+    ) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = initialStartDestination,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            enterTransition = {
-                fadeIn(animationSpec = tween(200)) + slideInHorizontally(
-                    animationSpec = tween(200),
-                    initialOffsetX = { (it * 0.08f).toInt() }
-                )
-            },
-            exitTransition = {
-                fadeOut(animationSpec = tween(200)) + slideOutHorizontally(
-                    animationSpec = tween(200),
-                    targetOffsetX = { -(it * 0.08f).toInt() }
-                )
-            },
-            popEnterTransition = {
-                fadeIn(animationSpec = tween(200)) + slideInHorizontally(
-                    animationSpec = tween(200),
-                    initialOffsetX = { -(it * 0.08f).toInt() }
-                )
-            },
-            popExitTransition = {
-                fadeOut(animationSpec = tween(200)) + slideOutHorizontally(
-                    animationSpec = tween(200),
-                    targetOffsetX = { (it * 0.08f).toInt() }
-                )
-            }
+                .padding(paddingValues),
+            enterTransition = { slideInHorizontally(initialOffsetX = { 300 }, animationSpec = tween(220)) + fadeIn(tween(200)) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -300 }, animationSpec = tween(220)) + fadeOut(tween(200)) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -300 }, animationSpec = tween(220)) + fadeIn(tween(200)) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { 300 }, animationSpec = tween(220)) + fadeOut(tween(200)) }
         ) {
+            // Main Bottom Bar Screens
             composable(Screen.Home.route) {
                 HomeScreen(
                     homeViewModel = homeViewModel,
                     playerViewModel = playerViewModel,
-                    onNavigateToSettings = {
-                        isSearchActive = false
-                        navController.navigate(Screen.Settings.route)
-                    },
-                    onNavigateToShortcut = { route ->
-                        isSearchActive = false
-                        navController.navigate(route)
-                    },
+                    onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                    onNavigateToShortcut = { route -> navController.navigate(route) },
                     isSearchActive = isSearchActive,
                     onSearchActiveChange = { isSearchActive = it }
                 )
@@ -266,10 +245,11 @@ fun MainScaffold(
             }
             composable(Screen.Downloads.route) {
                 DownloadsScreen(
-                    downloadsViewModel = downloadsViewModel,
-                    saveFolder = settingsState.saveFolder
+                    downloadsViewModel = downloadsViewModel
                 )
             }
+
+            // Settings Hub Screen
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onNavigateToAppearance = { navController.navigate(Screen.SettingsAppearance.route) },
@@ -288,7 +268,7 @@ fun MainScaffold(
             composable(Screen.TopTracks.route) {
                 SongListSubScreen(
                     title = "Top tracks",
-                    songs = SampleData.songs.sortedByDescending { it.durationSeconds },
+                    songs = homeUiState.topTracks,
                     playerViewModel = playerViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
@@ -296,7 +276,7 @@ fun MainScaffold(
             composable(Screen.LastAdded.route) {
                 SongListSubScreen(
                     title = "Last added",
-                    songs = SampleData.songs.reversed(),
+                    songs = homeUiState.lastAdded,
                     playerViewModel = playerViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
@@ -304,7 +284,7 @@ fun MainScaffold(
             composable(Screen.History.route) {
                 SongListSubScreen(
                     title = "History",
-                    songs = SampleData.songs,
+                    songs = homeUiState.recentlyPlayed,
                     playerViewModel = playerViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
@@ -312,7 +292,7 @@ fun MainScaffold(
             composable(Screen.Favorites.route) {
                 SongListSubScreen(
                     title = "Favorites",
-                    songs = SampleData.songs.filter { it.isFavorite },
+                    songs = homeUiState.favorites,
                     playerViewModel = playerViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )

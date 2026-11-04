@@ -1,49 +1,116 @@
 package com.nishant.northmusic.ui.viewmodels
 
-import androidx.lifecycle.ViewModel
-import com.nishant.northmusic.data.model.SampleData
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.nishant.northmusic.data.local.LocalStatsDatabase
+import com.nishant.northmusic.data.model.Album
 import com.nishant.northmusic.data.model.Song
+import com.nishant.northmusic.data.repository.MusicRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class HomeUiState(
-    val greeting: String = "Good evening, Alex",
-    val sessionMood: String = "Late Night Session",
-    val searchQuery: String = "",
-    val selectedMoodTag: String = "For Alex",
-    val moodTags: List<String> = listOf("For Alex", "Deep Focus", "Nocturnal Drive", "Chillwave Synth", "Lo-Fi Beats"),
-    val recentlyPlayed: List<Song> = SampleData.songs.take(5),
-    val yourMusic: List<Song> = SampleData.songs,
-    val isShuffleActive: Boolean = false
+    val forYouSongs: List<Song> = emptyList(),
+    val recentlyPlayed: List<Song> = emptyList(),
+    val topTracks: List<Song> = emptyList(),
+    val lastAdded: List<Song> = emptyList(),
+    val favorites: List<Song> = emptyList(),
+    val yourMusic: List<Song> = emptyList(),
+    val albums: List<Album> = emptyList(),
+    val isScanning: Boolean = false
 )
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val musicRepo = MusicRepository.getInstance(application)
+    private val statsDb = LocalStatsDatabase.getInstance(application)
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    fun onSearchQueryChange(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
-        // TODO: Filter songs based on search query
+    init {
+        viewModelScope.launch {
+            combine(
+                musicRepo.songs,
+                musicRepo.albums,
+                musicRepo.isScanning,
+                statsDb.statsVersion
+            ) { songs, albums, isScanning, _ ->
+                computeHomeSections(songs, albums, isScanning)
+            }.collect {}
+        }
     }
 
-    fun onMoodTagSelected(tag: String) {
-        _uiState.update { it.copy(selectedMoodTag = tag) }
-        // TODO: Refresh recommendations based on mood
+    private suspend fun computeHomeSections(
+        songs: List<Song>,
+        albums: List<Album>,
+        isScanning: Boolean
+    ) {
+        if (songs.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    forYouSongs = emptyList(),
+                    recentlyPlayed = emptyList(),
+                    topTracks = emptyList(),
+                    lastAdded = emptyList(),
+                    favorites = emptyList(),
+                    yourMusic = emptyList(),
+                    albums = emptyList(),
+                    isScanning = isScanning
+                )
+            }
+            return
+        }
+
+        val songMap = songs.associateBy { it.id }
+
+        // Top tracks by play count
+        val topIds = statsDb.getTopTrackIds(30)
+        val topTracks = topIds.mapNotNull { songMap[it] }.ifEmpty {
+            songs.take(15)
+        }
+
+        // History / recently played
+        val historyIds = statsDb.getHistoryTrackIds(30)
+        val historyTracks = historyIds.mapNotNull { songMap[it] }
+
+        // Favorites
+        val favorites = songs.filter { it.isFavorite }
+
+        // Last added (date added descending)
+        val lastAdded = songs.sortedByDescending { it.dateAdded }
+
+        // For You: recently played first, then most played, then remaining songs
+        val forYouOrder = LinkedHashSet<Song>()
+        forYouOrder.addAll(historyTracks)
+        forYouOrder.addAll(topTracks)
+        forYouOrder.addAll(songs)
+        val forYouList = forYouOrder.take(12)
+
+        _uiState.update {
+            it.copy(
+                forYouSongs = forYouList,
+                recentlyPlayed = historyTracks.take(10),
+                topTracks = topTracks,
+                lastAdded = lastAdded.take(30),
+                favorites = favorites,
+                yourMusic = songs,
+                albums = albums,
+                isScanning = isScanning
+            )
+        }
     }
 
     fun onShuffleMixClick() {
-        _uiState.update { it.copy(isShuffleActive = !it.isShuffleActive) }
-        // TODO: Shuffle night mix playback
+        // Callback hook for personalized shuffle mix triggers
     }
 
-    fun onTuneMixClick() {
-        // TODO: Open mix equalizer/tuning sheet
-    }
-
-    fun onNotificationClick() {
-        // TODO: Open notifications panel
+    fun rescan() {
+        musicRepo.rescan()
     }
 }

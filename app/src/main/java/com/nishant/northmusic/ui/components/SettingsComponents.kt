@@ -46,9 +46,12 @@ fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    summary: String? = subtitle,
     icon: ImageVector? = null,
     enabled: Boolean = true
 ) {
+    val displaySubtitle = summary ?: subtitle
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -77,10 +80,10 @@ fun SettingsSwitchRow(
                     color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     fontWeight = FontWeight.Medium
                 )
-                if (subtitle != null) {
+                if (displaySubtitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = subtitle,
+                        text = displaySubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -109,9 +112,12 @@ fun SettingsValueRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    summary: String? = subtitle,
     icon: ImageVector? = null,
     enabled: Boolean = true
 ) {
+    val displaySubtitle = summary ?: subtitle
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -140,10 +146,10 @@ fun SettingsValueRow(
                     color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                     fontWeight = FontWeight.Medium
                 )
-                if (subtitle != null) {
+                if (displaySubtitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = subtitle,
+                        text = displaySubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -158,7 +164,8 @@ fun SettingsValueRow(
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
             )
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
@@ -179,8 +186,13 @@ fun SettingsSliderRow(
     modifier: Modifier = Modifier,
     steps: Int = 0,
     subtitle: String? = null,
-    valueDisplay: (Float) -> String = { "%.0f".format(it) }
+    summary: String? = subtitle,
+    valueLabel: String = "",
+    icon: ImageVector? = null,
+    valueDisplay: (Float) -> String = { if (valueLabel.isNotEmpty()) valueLabel else "%.0f".format(it) }
 ) {
+    val displaySubtitle = summary ?: subtitle
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -191,29 +203,44 @@ fun SettingsSliderRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Medium
-                )
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(24.dp)
                     )
+                }
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (displaySubtitle != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = displaySubtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             Text(
                 text = valueDisplay(value),
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
         }
-
+        Spacer(modifier = Modifier.height(8.dp))
         Slider(
             value = value,
             onValueChange = onValueChange,

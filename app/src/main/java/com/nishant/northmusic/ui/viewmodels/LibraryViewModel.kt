@@ -1,55 +1,144 @@
 package com.nishant.northmusic.ui.viewmodels
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.nishant.northmusic.data.model.Album
+import com.nishant.northmusic.data.model.Artist
+import com.nishant.northmusic.data.model.FolderItem
 import com.nishant.northmusic.data.model.LibraryFilter
-import com.nishant.northmusic.data.model.SampleData
+import com.nishant.northmusic.data.model.Playlist
 import com.nishant.northmusic.data.model.Song
-import kotlinx.coroutines.delay
+import com.nishant.northmusic.data.repository.MusicRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.Normalizer
 
 data class LibraryUiState(
     val selectedFilter: LibraryFilter = LibraryFilter.SONGS,
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
     val isSortAscending: Boolean = true,
-    val songs: List<Song> = SampleData.songs,
+    val songs: List<Song> = emptyList(),
+    val albums: List<Album> = emptyList(),
+    val artists: List<Artist> = emptyList(),
+    val playlists: List<Playlist> = emptyList(),
+    val folders: List<FolderItem> = emptyList(),
     val isScanning: Boolean = false,
     val isLibraryEmpty: Boolean = false,
     val activeScrollLetter: String = "A"
 )
 
-class LibraryViewModel : ViewModel() {
+fun String.normalizeForSearch(): String {
+    val normalized = Normalizer.normalize(this, Normalizer.Form.NFD)
+    return normalized.replace("""\p{M}""".toRegex(), "").lowercase()
+}
+
+class LibraryViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val musicRepo = MusicRepository.getInstance(application)
 
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
-    fun onFilterSelected(filter: LibraryFilter) {
-        _uiState.update { it.copy(selectedFilter = filter) }
-        // TODO: Filter content by filter category
+    init {
+        viewModelScope.launch {
+            combine(
+                musicRepo.songs,
+                musicRepo.albums,
+                musicRepo.artists,
+                musicRepo.folders,
+                musicRepo.isScanning
+            ) { songs, albums, artists, folders, isScanning ->
+                val favCount = songs.count { it.isFavorite }
+                val dynamicPlaylists = if (favCount > 0) {
+                    listOf(
+                        Playlist(
+                            id = "fav",
+                            title = "Favorites",
+                            songCount = favCount,
+                            colorSeed = 0xFFF43F5E
+                        )
+                    )
+                } else emptyList()
+
+                val query = _uiState.value.searchQuery.trim().normalizeForSearch()
+                val isAsc = _uiState.value.isSortAscending
+
+                val filteredSongs = if (query.isBlank()) {
+                    songs
+                } else {
+                    songs.filter {
+                        it.title.normalizeForSearch().contains(query) ||
+                                it.artist.normalizeForSearch().contains(query) ||
+                                it.album.normalizeForSearch().contains(query)
+                    }
+                }.let { list ->
+                    if (isAsc) list.sortedBy { it.title.lowercase() } else list.sortedByDescending { it.title.lowercase() }
+                }
+
+                val filteredAlbums = if (query.isBlank()) {
+                    albums
+                } else {
+                    albums.filter {
+                        it.title.normalizeForSearch().contains(query) ||
+                                it.artist.normalizeForSearch().contains(query)
+                    }
+                }
+
+                val filteredArtists = if (query.isBlank()) {
+                    artists
+                } else {
+                    artists.filter {
+                        it.name.normalizeForSearch().contains(query)
+                    }
+                }
+
+                val filteredFolders = if (query.isBlank()) {
+                    folders
+                } else {
+                    folders.filter {
+                        it.name.normalizeForSearch().contains(query)
+                    }
+                }
+
+                _uiState.update { current ->
+                    current.copy(
+                        songs = filteredSongs,
+                        albums = filteredAlbums,
+                        artists = filteredArtists,
+                        playlists = dynamicPlaylists,
+                        folders = filteredFolders,
+                        isScanning = isScanning,
+                        isLibraryEmpty = !isScanning && songs.isEmpty()
+                    )
+                }
+            }.collect {}
+        }
     }
 
-    fun onSearchQueryChange(query: String) {
-        _uiState.update { current ->
-            val filtered = if (query.isBlank()) {
-                SampleData.songs
-            } else {
-                SampleData.songs.filter {
-                    it.title.contains(query, ignoreCase = true) ||
-                            it.artist.contains(query, ignoreCase = true)
-                }
-            }
-            current.copy(searchQuery = query, songs = filtered)
-        }
-        // TODO: Perform database query search
+    fun onFilterSelected(filter: LibraryFilter) {
+        _uiState.update { it.copy(selectedFilter = filter) }
     }
+
+    fun selectFilter(filter: LibraryFilter) = onFilterSelected(filter)
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        reapplyFilterAndSort()
+    }
+
+    fun updateSearchQuery(query: String) = onSearchQueryChange(query)
 
     fun toggleSearchActive() {
         _uiState.update { it.copy(isSearchActive = !it.isSearchActive) }
+        if (!_uiState.value.isSearchActive) {
+            onSearchQueryChange("")
+        }
     }
 
     fun toggleSearch() {
@@ -57,16 +146,8 @@ class LibraryViewModel : ViewModel() {
     }
 
     fun toggleSortOrder() {
-        _uiState.update { current ->
-            val newAsc = !current.isSortAscending
-            val sorted = if (newAsc) {
-                current.songs.sortedBy { it.title }
-            } else {
-                current.songs.sortedByDescending { it.title }
-            }
-            current.copy(isSortAscending = newAsc, songs = sorted)
-        }
-        // TODO: Apply sorting in persistent preferences
+        _uiState.update { it.copy(isSortAscending = !it.isSortAscending) }
+        reapplyFilterAndSort()
     }
 
     fun onLetterSelected(letter: String) {
@@ -74,25 +155,61 @@ class LibraryViewModel : ViewModel() {
     }
 
     fun scanMusic() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isScanning = true) }
-            delay(1500)
-            _uiState.update {
-                it.copy(
-                    isScanning = false,
-                    isLibraryEmpty = false,
-                    songs = SampleData.songs
-                )
-            }
-            // TODO: Invoke MediaStore local audio indexing
-        }
+        musicRepo.rescan()
     }
 
-    fun toggleEmptyStateForPreview() {
+    private fun reapplyFilterAndSort() {
+        val allSongs = musicRepo.songs.value
+        val allAlbums = musicRepo.albums.value
+        val allArtists = musicRepo.artists.value
+        val allFolders = musicRepo.folders.value
+
+        val query = _uiState.value.searchQuery.trim().normalizeForSearch()
+        val isAsc = _uiState.value.isSortAscending
+
+        val filteredSongs = if (query.isBlank()) {
+            allSongs
+        } else {
+            allSongs.filter {
+                it.title.normalizeForSearch().contains(query) ||
+                        it.artist.normalizeForSearch().contains(query) ||
+                        it.album.normalizeForSearch().contains(query)
+            }
+        }.let { list ->
+            if (isAsc) list.sortedBy { it.title.lowercase() } else list.sortedByDescending { it.title.lowercase() }
+        }
+
+        val filteredAlbums = if (query.isBlank()) {
+            allAlbums
+        } else {
+            allAlbums.filter {
+                it.title.normalizeForSearch().contains(query) ||
+                        it.artist.normalizeForSearch().contains(query)
+            }
+        }
+
+        val filteredArtists = if (query.isBlank()) {
+            allArtists
+        } else {
+            allArtists.filter {
+                it.name.normalizeForSearch().contains(query)
+            }
+        }
+
+        val filteredFolders = if (query.isBlank()) {
+            allFolders
+        } else {
+            allFolders.filter {
+                it.name.normalizeForSearch().contains(query)
+            }
+        }
+
         _uiState.update {
             it.copy(
-                isLibraryEmpty = !it.isLibraryEmpty,
-                songs = if (!it.isLibraryEmpty) emptyList() else SampleData.songs
+                songs = filteredSongs,
+                albums = filteredAlbums,
+                artists = filteredArtists,
+                folders = filteredFolders
             )
         }
     }

@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,7 +51,7 @@ import com.nishant.northmusic.data.model.PlayerState
 /**
  * Floating Mini Player Pill:
  * - 28dp corner radius, 12dp horizontal margin, 8dp above bottom nav, 6dp elevation shadow.
- * - Background: primaryContainer at full strength.
+ * - Background: primaryContainer at ~80% opacity over the surface for balanced saturation.
  * - Text and icons in onPrimaryContainer, immediately reactive to accent color changes.
  * - Play/pause: 48dp control with circular progress ring (4dp stroke) around the icon.
  * - Straight progress line removed.
@@ -77,6 +78,10 @@ fun MiniPlayer(
 
         var totalDragX by remember { mutableFloatStateOf(0f) }
         var totalDragY by remember { mutableFloatStateOf(0f) }
+
+        val miniPlayerBackground = MaterialTheme.colorScheme.primaryContainer
+            .copy(alpha = 0.80f)
+            .compositeOver(MaterialTheme.colorScheme.surface)
 
         Surface(
             modifier = Modifier
@@ -113,7 +118,7 @@ fun MiniPlayer(
                     )
                 },
             shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
+            color = miniPlayerBackground,
             tonalElevation = 0.dp
         ) {
             Box(
@@ -127,8 +132,9 @@ fun MiniPlayer(
                         .padding(start = 12.dp, end = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 44dp rounded artwork
-                    ArtworkPlaceholder(
+                    // 44dp rounded artwork with async loading and fallback
+                    AsyncSongArtwork(
+                        artworkUri = song.albumArtUri,
                         size = 44.dp,
                         shape = RoundedCornerShape(10.dp),
                         colorSeed = song.colorSeed
@@ -142,63 +148,53 @@ fun MiniPlayer(
                     ) {
                         Text(
                             text = song.title,
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = song.artist,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    // Favorite heart
+                    // Favorite Button
                     IconButton(
                         onClick = onFavoriteClick,
-                        modifier = Modifier.size(38.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
-                            imageVector = if (playerState.isFavorite) {
-                                Icons.Rounded.Favorite
-                            } else {
-                                Icons.Rounded.FavoriteBorder
-                            },
-                            contentDescription = if (playerState.isFavorite) "Remove favorite" else "Favorite",
-                            tint = if (playerState.isFavorite) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f)
-                            },
+                            imageVector = if (playerState.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            contentDescription = "Favorite",
+                            tint = if (playerState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(22.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    // Play / Pause 48dp control with circular progress ring
+                    // Play / Pause Button with Circular Progress Ring around it
                     ProgressRingIconButton(
                         progress = playerState.progress,
                         icon = if (playerState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = if (playerState.isPlaying) "Pause" else "Play",
                         onClick = onPlayPauseClick,
                         size = 48.dp,
-                        strokeWidth = 4.dp,
                         iconSize = 24.dp,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.20f),
-                        contentDescription = if (playerState.isPlaying) "Pause" else "Play"
+                        strokeWidth = 3.5.dp,
+                        ringColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
+                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
 
-                    Spacer(modifier = Modifier.width(2.dp))
-
-                    // Next button
+                    // Skip Next Button
                     IconButton(
                         onClick = onNextClick,
-                        modifier = Modifier.size(38.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.SkipNext,

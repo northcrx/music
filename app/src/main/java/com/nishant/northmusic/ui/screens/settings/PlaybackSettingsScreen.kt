@@ -55,6 +55,7 @@ import com.nishant.northmusic.ui.components.SettingsSectionTitle
 import com.nishant.northmusic.ui.components.SettingsSwitchRow
 import com.nishant.northmusic.ui.components.SettingsValueRow
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
+import com.nishant.northmusic.util.FeatureFlags
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,65 +105,67 @@ fun PlaybackSettingsScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = BottomListScrollPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Equalizer Row
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(22.dp))
-                            .clickable { onNavigateToEqualizer() }
-                            .padding(18.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            // Equalizer Row (Gated by FeatureFlag)
+            if (FeatureFlags.SHOW_EQUALIZER) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
                         Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(22.dp))
+                                .clickable { onNavigateToEqualizer() }
+                                .padding(18.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                modifier = Modifier.size(42.dp)
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    modifier = Modifier.size(42.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.GraphicEq,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(22.dp)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.GraphicEq,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                }
+                                Column {
+                                    Text(
+                                        text = "Equalizer",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "5-band EQ, Auto mode, Bass boost & Virtualizer",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
-                            Column {
-                                Text(
-                                    text = "Equalizer",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "5-band EQ, Auto mode, Bass boost & Virtualizer",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
 
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                            contentDescription = "Open Equalizer",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                                contentDescription = "Open Equalizer",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -174,130 +177,108 @@ fun PlaybackSettingsScreen(
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    ) {
-                        SettingsSectionTitle(title = "AUDIO PROCESSING")
-
-                        SettingsSwitchRow(
-                            title = "Gapless playback",
-                            subtitle = "Seamlessly transition between consecutive tracks",
-                            checked = state.gaplessPlayback,
-                            onCheckedChange = { settingsViewModel.toggleGaplessPlayback(it) },
-                            icon = Icons.Rounded.Tune
-                        )
-
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
-                        )
-
-                        SettingsSwitchRow(
-                            title = "Audio normalization",
-                            subtitle = "Balance volume differences across varied albums and artists",
-                            checked = state.audioNormalization,
-                            onCheckedChange = { settingsViewModel.toggleAudioNormalization(it) },
-                            icon = Icons.Rounded.Hearing
-                        )
-
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
-                        )
-
-                        SettingsValueRow(
-                            title = "ReplayGain mode",
-                            subtitle = "Apply embedded loudness metadata tag",
-                            value = state.replayGainMode,
-                            onClick = { showReplayGainDialog = true },
-                            icon = Icons.AutoMirrored.Rounded.VolumeUp
-                        )
-
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
-                        )
-
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         SettingsSwitchRow(
                             title = "High quality audio",
-                            subtitle = "Prioritize lossless 24-bit 96kHz stream decoding",
+                            summary = "Play audio tracks at full native resolution without compression",
+                            icon = Icons.Rounded.HighQuality,
                             checked = state.highQualityAudio,
-                            onCheckedChange = { settingsViewModel.toggleHighQualityAudio(it) },
-                            icon = Icons.Rounded.HighQuality
+                            onCheckedChange = { settingsViewModel.setHighQualityAudio(it) }
                         )
-
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                            modifier = Modifier.padding(start = 68.dp)
                         )
-
                         SettingsSwitchRow(
-                            title = "Audio focus",
-                            subtitle = "Pause playback when another app requests audio focus",
-                            checked = state.audioFocus,
-                            onCheckedChange = { settingsViewModel.setAudioFocus(it) }
+                            title = "Audio normalization",
+                            summary = "Balance volume across all audio tracks to prevent sudden loudness",
+                            icon = Icons.AutoMirrored.Rounded.VolumeUp,
+                            checked = state.audioNormalization,
+                            onCheckedChange = { settingsViewModel.setAudioNormalization(it) }
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
+                        SettingsSwitchRow(
+                            title = "Gapless playback",
+                            summary = "Eliminate silent gaps between contiguous tracks in an album",
+                            icon = Icons.Rounded.Tune,
+                            checked = state.gaplessPlayback,
+                            onCheckedChange = { settingsViewModel.setGaplessPlayback(it) }
                         )
                     }
                 }
             }
 
-            // Per-Device Rules
+            // Advanced Playback Dynamics
             item {
+                SettingsSectionTitle(title = "DYNAMICS & REPLAYGAIN")
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    ) {
-                        SettingsSectionTitle(title = "HEADPHONES (WIRED)")
-
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsValueRow(
+                            title = "ReplayGain mode",
+                            value = state.replayGainMode,
+                            summary = "Select gain computation target (Track, Album, or Disabled)",
+                            icon = Icons.Rounded.Hearing,
+                            onClick = { showReplayGainDialog = true }
+                        )
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
                         SettingsSwitchRow(
-                            title = "Resume on connect",
-                            subtitle = "Automatically start playing when headphones are plugged in",
+                            title = "Fade on pause / resume",
+                            summary = "Smooth volume fade when pausing or resuming playback",
+                            icon = Icons.Rounded.Tune,
+                            checked = state.fadeOnPlayPause,
+                            onCheckedChange = { settingsViewModel.setFadeOnPlayPause(it) }
+                        )
+                    }
+                }
+            }
+
+            // Headset & Bluetooth Integration
+            item {
+                SettingsSectionTitle(title = "HEADSET & BLUETOOTH")
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsSwitchRow(
+                            title = "Resume on headphones connect",
+                            summary = "Resume playback automatically when headphones are plugged in",
+                            icon = Icons.Rounded.Headphones,
                             checked = state.headphonesResumeOnConnect,
-                            onCheckedChange = { settingsViewModel.setHeadphonesResume(it) },
-                            icon = Icons.Rounded.Headphones
+                            onCheckedChange = { settingsViewModel.setResumeOnHeadphonesConnect(it) }
                         )
-
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                            modifier = Modifier.padding(start = 68.dp)
                         )
-
                         SettingsSwitchRow(
-                            title = "Pause on disconnect",
-                            subtitle = "Pause playback when unplugging headphones",
+                            title = "Pause on headphones disconnect",
+                            summary = "Pause music playback immediately when headphones or bluetooth detach",
+                            icon = Icons.Rounded.Headphones,
                             checked = state.headphonesPauseOnDisconnect,
-                            onCheckedChange = { settingsViewModel.setHeadphonesPause(it) }
+                            onCheckedChange = { settingsViewModel.setPauseOnHeadphonesDisconnect(it) }
                         )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        SettingsSectionTitle(title = "BLUETOOTH AUDIO")
-
-                        SettingsSwitchRow(
-                            title = "Resume on connect",
-                            subtitle = "Automatically play when Bluetooth audio device connects",
-                            checked = state.bluetoothResumeOnConnect,
-                            onCheckedChange = { settingsViewModel.setBluetoothResume(it) },
-                            icon = Icons.Rounded.Bluetooth
-                        )
-
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                            modifier = Modifier.padding(start = 68.dp)
                         )
-
                         SettingsSwitchRow(
-                            title = "Pause on disconnect",
-                            subtitle = "Pause playback when Bluetooth disconnects",
-                            checked = state.bluetoothPauseOnDisconnect,
-                            onCheckedChange = { settingsViewModel.setBluetoothPause(it) }
+                            title = "Resume on Bluetooth connect",
+                            summary = "Start playing when your favorite Bluetooth speaker or earbuds reconnect",
+                            icon = Icons.Rounded.Bluetooth,
+                            checked = state.bluetoothResumeOnConnect,
+                            onCheckedChange = { settingsViewModel.setResumeOnBluetoothConnect(it) }
                         )
                     }
                 }
@@ -312,12 +293,12 @@ fun PlaybackSettingsScreen(
                 Text(
                     text = "ReplayGain Mode",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
-                Column {
-                    listOf("Album", "Track", "None").forEach { mode ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    listOf("Disabled", "Track", "Album").forEach { mode ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -336,7 +317,8 @@ fun PlaybackSettingsScreen(
                                     showReplayGainDialog = false
                                 },
                                 colors = RadioButtonDefaults.colors(
-                                    selectedColor = MaterialTheme.colorScheme.primary
+                                    selectedColor = MaterialTheme.colorScheme.primary,
+                                    unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             )
                             Text(
@@ -348,7 +330,8 @@ fun PlaybackSettingsScreen(
                     }
                 }
             },
-            confirmButton = {}
+            confirmButton = {},
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     }
 }

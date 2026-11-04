@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.ClearAll
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -42,30 +43,32 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -86,6 +89,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,11 +98,12 @@ import androidx.compose.ui.unit.sp
 import com.nishant.northmusic.data.model.LyricLine
 import com.nishant.northmusic.data.model.RepeatMode
 import com.nishant.northmusic.data.model.Song
-import com.nishant.northmusic.ui.components.ArtworkPlaceholder
+import com.nishant.northmusic.ui.components.AsyncSongArtwork
 import com.nishant.northmusic.ui.components.SongItem
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.theme.SquircleLargeArtworkShape
 import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
+import com.nishant.northmusic.util.FeatureFlags
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -183,7 +188,7 @@ fun NowPlayingScreen(
                         expanded = showMoreMenu,
                         onDismissRequest = { showMoreMenu = false }
                     ) {
-                        if (onNavigateToEqualizer != null) {
+                        if (FeatureFlags.SHOW_EQUALIZER && onNavigateToEqualizer != null) {
                             DropdownMenuItem(
                                 text = { Text("Equalizer") },
                                 onClick = {
@@ -196,24 +201,12 @@ fun NowPlayingScreen(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text("View album") },
+                            text = { Text("Share") },
                             onClick = {
                                 showMoreMenu = false
-                                /* TODO: Navigate to album details */
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("View artist") },
-                            onClick = {
-                                showMoreMenu = false
-                                /* TODO: Navigate to artist details */
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(if (lyrics.isEmpty()) "Load demo lyrics" else "Simulate no lyrics") },
-                            onClick = {
-                                showMoreMenu = false
-                                playerViewModel.setEmptyLyrics(lyrics.isNotEmpty())
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Rounded.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         )
                     }
@@ -224,7 +217,7 @@ fun NowPlayingScreen(
             )
         )
 
-        // Artwork (fills vertical space proportionally via weight, keeping everything on screen)
+        // Artwork with Coil AsyncImage and placeholder fallback
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -232,11 +225,11 @@ fun NowPlayingScreen(
                 .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
-            ArtworkPlaceholder(
+            AsyncSongArtwork(
+                artworkUri = song.albumArtUri,
+                colorSeed = song.colorSeed,
                 size = 320.dp,
                 shape = SquircleLargeArtworkShape,
-                colorSeed = song.colorSeed,
-                iconSize = 88.dp,
                 modifier = Modifier
                     .aspectRatio(1f, matchHeightConstraintsFirst = true)
                     .shadow(
@@ -332,7 +325,7 @@ fun NowPlayingScreen(
             value = sliderPosition,
             onValueChange = { sliderPosition = it },
             onValueChangeFinished = { playerViewModel.seekTo(sliderPosition.toInt()) },
-            valueRange = 0f..song.durationSeconds.toFloat(),
+            valueRange = 0f..song.durationSeconds.toFloat().coerceAtLeast(1f),
             thumb = {
                 Box(
                     modifier = Modifier
@@ -348,24 +341,21 @@ fun NowPlayingScreen(
                     colors = SliderDefaults.colors(
                         activeTrackColor = MaterialTheme.colorScheme.primary,
                         inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                    ),
-                    thumbTrackGapSize = 0.dp,
-                    drawStopIndicator = null
+                    )
                 )
             },
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Time Indicator Labels (Position / Total Duration)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            val currentMinutes = sliderPosition.toInt() / 60
-            val currentSeconds = sliderPosition.toInt() % 60
             Text(
-                text = "%d:%02d".format(currentMinutes, currentSeconds),
+                text = formatDuration(sliderPosition.toInt()),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -376,23 +366,19 @@ fun NowPlayingScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Transport Controls (Play 80dp, Prev/Next 56dp, Shuffle/Repeat 48dp)
+        // Playback Controls Row: Shuffle | Prev | Play/Pause | Next | Repeat
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Shuffle
             IconButton(
                 onClick = { playerViewModel.toggleShuffle() },
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (playerState.isShuffle) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
-                    )
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Shuffle,
@@ -402,34 +388,23 @@ fun NowPlayingScreen(
                 )
             }
 
-            // Previous
             IconButton(
                 onClick = { playerViewModel.skipPrevious() },
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                modifier = Modifier.size(54.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.SkipPrevious,
                     contentDescription = "Previous",
                     tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(34.dp)
                 )
             }
 
-            // Play / Pause Hero Button
+            // Central Play/Pause FAB
             FilledIconButton(
                 onClick = { playerViewModel.togglePlayPause() },
-                modifier = Modifier
-                    .size(80.dp)
-                    .shadow(
-                        elevation = 14.dp,
-                        shape = RoundedCornerShape(26.dp),
-                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-                    ),
-                shape = RoundedCornerShape(26.dp),
+                modifier = Modifier.size(72.dp),
+                shape = CircleShape,
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -438,38 +413,32 @@ fun NowPlayingScreen(
                 Icon(
                     imageVector = if (playerState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = if (playerState.isPlaying) "Pause" else "Play",
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(38.dp)
                 )
             }
 
-            // Next
             IconButton(
                 onClick = { playerViewModel.skipNext() },
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                modifier = Modifier.size(54.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.SkipNext,
                     contentDescription = "Next",
                     tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(34.dp)
                 )
             }
 
-            // Repeat
             IconButton(
                 onClick = { playerViewModel.cycleRepeatMode() },
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (playerState.repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
-                    )
+                modifier = Modifier.size(48.dp)
             ) {
+                val icon = when (playerState.repeatMode) {
+                    RepeatMode.ONE -> Icons.Rounded.RepeatOne
+                    else -> Icons.Rounded.Repeat
+                }
                 Icon(
-                    imageVector = if (playerState.repeatMode == RepeatMode.ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                    imageVector = icon,
                     contentDescription = "Repeat",
                     tint = if (playerState.repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
@@ -479,192 +448,186 @@ fun NowPlayingScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Bottom Auxiliary Buttons (Lyrics & Up Next - open ModalBottomSheet)
+        // Bottom Action Buttons: Lyrics and Up Next
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Card(
+            FilledTonalButton(
+                onClick = {
+                    selectedSheetTab = 0
+                    showBottomSheet = true
+                },
                 modifier = Modifier
                     .weight(1f)
-                    .clickable {
-                        selectedSheetTab = 0
-                        showBottomSheet = true
-                    },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Lyrics,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Lyrics",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Rounded.Lyrics,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Lyrics",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
-            Card(
+            FilledTonalButton(
+                onClick = {
+                    selectedSheetTab = 1
+                    showBottomSheet = true
+                },
                 modifier = Modifier
                     .weight(1f)
-                    .clickable {
-                        selectedSheetTab = 1
-                        showBottomSheet = true
-                    },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Up Next (${queue.size})",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Up Next",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
 
-    // ModalBottomSheet covering lower section of Now Playing screen with internal scrolling
+    // Modal Bottom Sheet for Lyrics & Up Next
     if (showBottomSheet) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-        val scope = rememberCoroutineScope()
+        val coroutineScope = rememberCoroutineScope()
 
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            dragHandle = { BottomSheetDefaults.DragHandle() }
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(vertical = 12.dp)
+                        .width(36.dp)
+                        .height(4.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                )
+            },
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(560.dp)
+                    .height(520.dp)
             ) {
-                // Two tabs: Lyrics and Up Next
-                PrimaryTabRow(
+                // Tab Header: Lyrics / Up Next
+                TabRow(
                     selectedTabIndex = selectedSheetTab,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    contentColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedSheetTab]),
+                            color = MaterialTheme.colorScheme.primary,
+                            height = 3.dp
+                        )
+                    },
+                    divider = {}
                 ) {
                     Tab(
                         selected = selectedSheetTab == 0,
                         onClick = { selectedSheetTab = 0 },
                         text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Lyrics,
-                                    contentDescription = null,
-                                    tint = if (selectedSheetTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = "Lyrics",
-                                    fontWeight = if (selectedSheetTab == 0) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selectedSheetTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = "Lyrics",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = if (selectedSheetTab == 0) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedSheetTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     )
                     Tab(
                         selected = selectedSheetTab == 1,
                         onClick = { selectedSheetTab = 1 },
                         text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
-                                    contentDescription = null,
-                                    tint = if (selectedSheetTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = "Up Next (${queue.size})",
-                                    fontWeight = if (selectedSheetTab == 1) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selectedSheetTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = "Up Next",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = if (selectedSheetTab == 1) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedSheetTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     )
                 }
 
-                // Internal scrollable content based on active tab
-                if (selectedSheetTab == 0) {
-                    LyricsTabContent(
-                        lyrics = lyrics,
-                        currentPositionSeconds = playerState.currentPositionSeconds,
-                        onSeekToLine = { time ->
-                            playerViewModel.seekTo(time)
-                            // TODO: Real seek in playback engine
-                        },
-                        onSearchOnline = {
-                            playerViewModel.searchLyricsOnline()
-                            // TODO: Query online lyrics provider
-                        }
-                    )
-                } else {
-                    UpNextTabContent(
-                        currentSong = song,
-                        queue = queue,
-                        onSongClick = { selectedSong ->
-                            playerViewModel.playSong(selectedSong)
-                            scope.launch { sheetState.hide() }
-                            showBottomSheet = false
-                        },
-                        onRemoveFromQueue = { songId ->
-                            playerViewModel.removeFromQueue(songId)
-                            // TODO: Remove song from ExoPlayer queue
-                        },
-                        onMoveQueueItem = { from, to ->
-                            playerViewModel.moveQueueItem(from, to)
-                            // TODO: Reorder items in ExoPlayer timeline
-                        },
-                        onClearQueue = {
-                            playerViewModel.clearQueue()
-                            // TODO: Clear playback queue
-                        }
-                    )
+                // Tab Content Body
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (selectedSheetTab == 0) {
+                        LyricsTabContent(
+                            lyrics = lyrics,
+                            currentPositionSeconds = playerState.currentPositionSeconds,
+                            onSeekToLine = { seconds ->
+                                playerViewModel.seekTo(seconds)
+                            },
+                            onSearchOnline = {
+                                playerViewModel.searchLyricsOnline()
+                            }
+                        )
+                    } else {
+                        UpNextTabContent(
+                            currentSong = song,
+                            queue = queue,
+                            onSongClick = { nextSong ->
+                                playerViewModel.playSong(nextSong)
+                            },
+                            onRemoveFromQueue = { songId ->
+                                playerViewModel.removeFromQueue(songId)
+                            },
+                            onMoveQueueItem = { from, to ->
+                                playerViewModel.moveQueueItem(from, to)
+                            },
+                            onClearQueue = {
+                                playerViewModel.clearQueue()
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+private fun formatDuration(seconds: Int): String {
+    val m = seconds / 60
+    val s = seconds % 60
+    return "%d:%02d".format(m, s)
+}
+
 /**
  * Lyrics Tab:
- * Displays synchronized lyrics with current line highlighted and dimmed surrounding lines.
- * Auto-scrolls to the current line as song position progresses.
- * Tap a line to seek to that timestamp.
- * Includes empty state with "Search online" button when no lyrics exist.
+ * Displays lyrics lines with current line highlighted (bigger, bright) and others dimmed.
+ * Auto-scrolls with song progress.
+ * Tap a line seeks playback to that point.
+ * Empty state: "No lyrics found" + "Search online" button.
  */
 @Composable
 fun LyricsTabContent(
@@ -675,7 +638,7 @@ fun LyricsTabContent(
     modifier: Modifier = Modifier
 ) {
     if (lyrics.isEmpty()) {
-        // Empty State: "No lyrics found" + "Search online" button
+        // Empty State
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -683,58 +646,51 @@ fun LyricsTabContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.size(72.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.Lyrics,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(18.dp))
+            Icon(
+                imageVector = Icons.Rounded.Lyrics,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(56.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
                 text = "No lyrics found",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+
             Spacer(modifier = Modifier.height(6.dp))
+
             Text(
-                text = "Synchronized lyrics are not available for this track yet.",
+                text = "Add an .lrc file in the same folder or embed lyrics tags into the audio file",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+
             Spacer(modifier = Modifier.height(20.dp))
-            Button(
+
+            FilledTonalButton(
                 onClick = onSearchOnline,
-                shape = PillShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                shape = PillShape
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Search,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text("Search online")
             }
-            // Architecture Note: Real lyrics later will read embedded ID3 USLT/SYLT tags or local .lrc files
         }
     } else {
         val listState = rememberLazyListState()
 
-        // Identify current active lyric line
-        val activeIndex = remember(lyrics, currentPositionSeconds) {
+        // Find current lyric index based on active playback time
+        val activeIndex = remember(currentPositionSeconds, lyrics) {
             val idx = lyrics.indexOfLast { it.timeSeconds <= currentPositionSeconds }
             if (idx == -1) 0 else idx
         }
@@ -789,7 +745,6 @@ fun LyricsTabContent(
                         .clip(RoundedCornerShape(8.dp))
                         .clickable {
                             onSeekToLine(line.timeSeconds)
-                            // TODO: Seek playback to synchronized line timestamp
                         }
                         .padding(vertical = 4.dp)
                 )
@@ -861,7 +816,7 @@ fun UpNextTabContent(
                     song = currentSong,
                     isPlaying = true,
                     onClick = { /* Already playing */ },
-                    onOptionsClick = { /* TODO: Song options */ }
+                    onOptionsClick = { /* Song options */ }
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -920,7 +875,7 @@ fun UpNextTabContent(
                                 song = song,
                                 isPlaying = false,
                                 onClick = { onSongClick(song) },
-                                onOptionsClick = { /* TODO: Options */ }
+                                onOptionsClick = { /* Options */ }
                             )
                         }
 

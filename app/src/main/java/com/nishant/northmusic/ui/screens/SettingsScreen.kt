@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nishant.northmusic.navigation.BottomListScrollPadding
+import com.nishant.northmusic.util.FeatureFlags
 
 /**
  * Settings Hub:
@@ -159,7 +160,11 @@ fun SettingsScreen(
                         )
                         SettingsGroupRow(
                             title = "Playback",
-                            summary = "Equalizer, gapless transition, normalization & devices",
+                            summary = if (FeatureFlags.SHOW_EQUALIZER) {
+                                "Equalizer, gapless transition, normalization & devices"
+                            } else {
+                                "Gapless transition, normalization & devices"
+                            },
                             icon = Icons.Rounded.Tune,
                             onClick = onNavigateToPlayback
                         )
@@ -189,26 +194,30 @@ fun SettingsScreen(
                             icon = Icons.Rounded.FolderSpecial,
                             onClick = onNavigateToLibrary
                         )
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(start = 68.dp)
-                        )
-                        SettingsGroupRow(
-                            title = "Downloads",
-                            summary = "Save folder, Wi-Fi only, parallel slots & naming pattern",
-                            icon = Icons.Rounded.DownloadDone,
-                            onClick = onNavigateToDownloads
-                        )
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(start = 68.dp)
-                        )
-                        SettingsGroupRow(
-                            title = "Network",
-                            summary = "Online metadata lookup & lyrics search providers",
-                            icon = Icons.Rounded.CloudDownload,
-                            onClick = onNavigateToNetwork
-                        )
+                        if (FeatureFlags.SHOW_DOWNLOADS) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                                modifier = Modifier.padding(start = 68.dp)
+                            )
+                            SettingsGroupRow(
+                                title = "Downloads",
+                                summary = "Save folder, Wi-Fi only, parallel slots & naming pattern",
+                                icon = Icons.Rounded.DownloadDone,
+                                onClick = onNavigateToDownloads
+                            )
+                        }
+                        if (FeatureFlags.SHOW_NETWORK_SETTINGS) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                                modifier = Modifier.padding(start = 68.dp)
+                            )
+                            SettingsGroupRow(
+                                title = "Network",
+                                summary = "Online metadata lookup & lyrics search providers",
+                                icon = Icons.Rounded.CloudDownload,
+                                onClick = onNavigateToNetwork
+                            )
+                        }
                     }
                 }
             }
@@ -240,8 +249,8 @@ fun SettingsScreen(
                             modifier = Modifier.padding(start = 68.dp)
                         )
                         SettingsGroupRow(
-                            title = "About",
-                            summary = "Version 1.0.0, open source licenses & legal info",
+                            title = "About NorthMusic",
+                            summary = "Version 1.0.0, licenses, release notes & developer info",
                             icon = Icons.Rounded.Info,
                             onClick = onNavigateToAbout
                         )
@@ -253,7 +262,7 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SettingsGroupRow(
+private fun SettingsGroupRow(
     title: String,
     summary: String,
     icon: ImageVector,
@@ -263,10 +272,10 @@ fun SettingsGroupRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
             modifier = Modifier.weight(1f),
@@ -274,9 +283,9 @@ fun SettingsGroupRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Surface(
-                shape = RoundedCornerShape(12.dp),
+                shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(42.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -288,10 +297,10 @@ fun SettingsGroupRow(
                 }
             }
 
-            Column(verticalArrangement = Arrangement.Center) {
+            Column(modifier = Modifier.padding(end = 8.dp)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -299,16 +308,17 @@ fun SettingsGroupRow(
                 Text(
                     text = summary,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
             }
         }
 
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-            contentDescription = "Open $title",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.size(14.dp)
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(16.dp)
         )
     }
 }

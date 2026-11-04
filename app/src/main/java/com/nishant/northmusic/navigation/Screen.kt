@@ -2,6 +2,7 @@ package com.nishant.northmusic.navigation
 
 import androidx.annotation.DrawableRes
 import com.nishant.northmusic.R
+import com.nishant.northmusic.util.FeatureFlags
 
 sealed class Screen(
     val route: String,
@@ -9,6 +10,10 @@ sealed class Screen(
     @param:DrawableRes val filledIconRes: Int = R.drawable.ic_nav_home_filled,
     @param:DrawableRes val outlinedIconRes: Int = R.drawable.ic_nav_home_outlined
 ) {
+    val selectedIconRes: Int get() = filledIconRes
+    val unselectedIconRes: Int get() = outlinedIconRes
+    val label: String get() = title
+
     data object Home : Screen(
         route = "home",
         title = "Home",
@@ -103,8 +108,16 @@ sealed class Screen(
     )
 }
 
-val BottomNavItems = listOf(
-    Screen.Home,
-    Screen.Library,
-    Screen.Downloads
-)
+val BottomNavItems: List<Screen>
+    get() = if (FeatureFlags.SHOW_DOWNLOADS) {
+        listOf(
+            Screen.Home,
+            Screen.Library,
+            Screen.Downloads
+        )
+    } else {
+        listOf(
+            Screen.Home,
+            Screen.Library
+        )
+    }

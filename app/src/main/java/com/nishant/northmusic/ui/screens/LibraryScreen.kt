@@ -95,10 +95,9 @@ import com.nishant.northmusic.data.model.Artist
 import com.nishant.northmusic.data.model.FolderItem
 import com.nishant.northmusic.data.model.LibraryFilter
 import com.nishant.northmusic.data.model.Playlist
-import com.nishant.northmusic.data.model.SampleData
 import com.nishant.northmusic.data.model.Song
 import com.nishant.northmusic.navigation.BottomListScrollPadding
-import com.nishant.northmusic.ui.components.ArtworkPlaceholder
+import com.nishant.northmusic.ui.components.AsyncSongArtwork
 import com.nishant.northmusic.ui.components.SongItem
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.LibraryViewModel
@@ -155,27 +154,30 @@ fun LibraryScreen(
 
     val railAlpha by animateFloatAsState(
         targetValue = if (isRailVisible || isDraggingRail) 1f else 0f,
-        animationSpec = tween(300),
+        animationSpec = tween(durationMillis = 250),
         label = "railAlpha"
     )
 
-    // Highlight letter of the first visible song during normal scrolling
-    val highlightedLetter = remember {
-        derivedStateOfLetter(sortedSongs, listState)
-    }
-
-    // Scroll to letter helper
-    val scrollToLetter: (String) -> Unit = { letter ->
+    fun scrollToLetter(letter: String) {
         val targetIndex = if (letter == "#") {
-            sortedSongs.indexOfFirst { it.title.firstOrNull()?.isLetter() == false }
+            sortedSongs.indexOfFirst { song ->
+                val firstChar = song.title.firstOrNull()?.uppercaseChar() ?: '#'
+                firstChar !in 'A'..'Z'
+            }
         } else {
-            sortedSongs.indexOfFirst { it.title.startsWith(letter, ignoreCase = true) }
+            sortedSongs.indexOfFirst { song ->
+                song.title.startsWith(letter, ignoreCase = true)
+            }
         }
-        if (targetIndex != -1) {
+        if (targetIndex >= 0) {
             coroutineScope.launch {
                 listState.scrollToItem(targetIndex)
             }
         }
+    }
+
+    val highlightedLetter = remember(sortedSongs, listState) {
+        derivedStateOfLetter(sortedSongs, listState)
     }
 
     Column(
@@ -183,62 +185,90 @@ fun LibraryScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // Top App Bar
+        // Sticky Top App Bar
         TopAppBar(
             windowInsets = WindowInsets(0.dp),
             title = {
-                Text(
-                    text = "Library",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                if (uiState.isSearchActive) {
+                    TextField(
+                        value = uiState.searchQuery,
+                        onValueChange = { libraryViewModel.updateSearchQuery(it) },
+                        placeholder = {
+                            Text(
+                                "Filter in ${uiState.selectedFilter.label.lowercase()}...",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent
+                        ),
+                        trailingIcon = {
+                            if (uiState.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { libraryViewModel.updateSearchQuery("") }) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Clear,
+                                        contentDescription = "Clear",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Text(
+                        text = "Library",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             },
             actions = {
-                IconButton(
-                    onClick = { libraryViewModel.toggleSearch() },
-                    modifier = Modifier.size(48.dp)
-                ) {
+                IconButton(onClick = { libraryViewModel.toggleSearch() }) {
                     Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = "Search library",
+                        imageVector = if (uiState.isSearchActive) Icons.Rounded.Clear else Icons.Rounded.Search,
+                        contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                Box {
-                    IconButton(
-                        onClick = { sortMenuExpanded = true },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.Sort,
-                            contentDescription = "Sort library",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = sortMenuExpanded,
-                        onDismissRequest = { sortMenuExpanded = false }
-                    ) {
-                        listOf("A-Z", "Recently added", "Most played", "Duration").forEach { sortOption ->
-                            DropdownMenuItem(
-                                text = { Text(sortOption) },
-                                onClick = {
-                                    selectedSort = sortOption
-                                    sortMenuExpanded = false
-                                },
-                                leadingIcon = if (selectedSort == sortOption) {
-                                    {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                } else null
+                if (uiState.selectedFilter == LibraryFilter.SONGS) {
+                    Box {
+                        IconButton(onClick = { sortMenuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.Sort,
+                                contentDescription = "Sort",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false }
+                        ) {
+                            listOf("A-Z", "Recently added", "Most played", "Duration").forEach { sortOption ->
+                                DropdownMenuItem(
+                                    text = { Text(sortOption) },
+                                    trailingIcon = if (selectedSort == sortOption) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    } else null,
+                                    onClick = {
+                                        selectedSort = sortOption
+                                        sortMenuExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -248,92 +278,37 @@ fun LibraryScreen(
             )
         )
 
-        // Search Bar (Expandable)
-        AnimatedVisibility(
-            visible = uiState.isSearchActive,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-            ) {
-                TextField(
-                    value = uiState.searchQuery,
-                    onValueChange = { libraryViewModel.onSearchQueryChange(it) },
-                    placeholder = {
-                        Text(
-                            text = "Filter library tracks...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Rounded.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    trailingIcon = {
-                        if (uiState.searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = { libraryViewModel.onSearchQueryChange("") },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Clear,
-                                    contentDescription = "Clear",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = PillShape,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        // Library Top Tabs: Songs, Albums, Artists, Playlists, Folders (ScrollableTabRow)
-        val tabEntries = LibraryFilter.entries.toTypedArray()
-        val selectedTabIndex = tabEntries.indexOf(uiState.selectedFilter).coerceAtLeast(0)
+        // Scrollable Tab Row with indicator
+        val filters = LibraryFilter.entries.toTypedArray()
+        val selectedIndex = filters.indexOf(uiState.selectedFilter)
 
         ScrollableTabRow(
-            selectedTabIndex = selectedTabIndex,
+            selectedTabIndex = selectedIndex,
             edgePadding = 16.dp,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary,
             indicator = { tabPositions ->
-                if (selectedTabIndex < tabPositions.size) {
+                if (selectedIndex < tabPositions.size) {
                     TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                        color = MaterialTheme.colorScheme.primary
+                        Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                        color = MaterialTheme.colorScheme.primary,
+                        height = 3.dp
                     )
                 }
             },
             divider = {}
         ) {
-            tabEntries.forEachIndexed { index, filter ->
+            filters.forEachIndexed { index, filter ->
+                val isSelected = index == selectedIndex
                 Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { libraryViewModel.onFilterSelected(filter) },
+                    selected = isSelected,
+                    onClick = { libraryViewModel.selectFilter(filter) },
                     text = {
                         Text(
                             text = filter.label,
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Medium,
-                            color = if (selectedTabIndex == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 )
@@ -342,7 +317,7 @@ fun LibraryScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Main Tab Content Area
+        // Content Area by Selected Tab
         when (uiState.selectedFilter) {
             LibraryFilter.SONGS -> {
                 if (uiState.isLibraryEmpty) {
@@ -365,7 +340,7 @@ fun LibraryScreen(
                                 SongItem(
                                     song = song,
                                     isPlaying = isPlaying,
-                                    onClick = { playerViewModel.playSong(song) },
+                                    onClick = { playerViewModel.playSong(song, sortedSongs) },
                                     onOptionsClick = { /* TODO: Song context menu */ }
                                 )
                             }
@@ -451,57 +426,51 @@ fun LibraryScreen(
                                                 0 -> 2.0f
                                                 1 -> 1.5f
                                                 2 -> 1.2f
-                                                else -> 1.0f
+                                                else -> 0.9f
                                             }
-                                        } else 1.0f,
-                                        animationSpec = spring(stiffness = 500f),
-                                        label = "fisheyeScale"
-                                    )
-
-                                    val shiftX by animateDpAsState(
-                                        targetValue = if (isDraggingRail && activeRailIndex != -1) {
-                                            val diff = abs(index - activeRailIndex)
-                                            when (diff) {
-                                                0 -> (-14).dp
-                                                1 -> (-8).dp
-                                                2 -> (-4).dp
-                                                else -> 0.dp
-                                            }
-                                        } else 0.dp,
-                                        animationSpec = spring(stiffness = 500f),
-                                        label = "fisheyeShift"
+                                        } else {
+                                            if (isSelected) 1.25f else 1.0f
+                                        },
+                                        animationSpec = spring(stiffness = 800f),
+                                        label = "railCharScale"
                                     )
 
                                     Text(
                                         text = letter,
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             fontSize = 9.sp,
-                                            lineHeight = 10.sp
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                         ),
-                                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
-                                        color = when {
-                                            isDraggingRail && activeRailIndex == index -> MaterialTheme.colorScheme.primary
-                                            isSelected -> MaterialTheme.colorScheme.primary
-                                            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        color = if (isSelected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                         },
                                         modifier = Modifier
-                                            .offset(x = shiftX)
                                             .scale(scale)
+                                            .padding(vertical = 1.dp)
                                     )
                                 }
                             }
                         }
 
-                        // Big Floating Letter Bubble Indicator while dragging
-                        if (isDraggingRail && activeRailIndex in alphabet.indices) {
-                            val activeLetter = alphabet[activeRailIndex]
-                            val bubbleFraction = (activeRailIndex + 0.5f) / alphabet.size
-                            val bubbleTop = (railHeightPx * bubbleFraction) - 28.dp.value
+                        // Large Floating Alphabet Preview Bubble (56dp circle) shown during touch drag
+                        val showBubble = isDraggingRail && activeRailIndex in alphabet.indices
+                        if (showBubble) {
+                            val activeLetter = if (activeRailIndex in alphabet.indices) alphabet[activeRailIndex] else "A"
+                            val bubbleTop by animateDpAsState(
+                                targetValue = if (activeRailIndex >= 0) {
+                                    val fraction = activeRailIndex.toFloat() / alphabet.size.toFloat()
+                                    (fraction * 450).dp
+                                } else 200.dp,
+                                animationSpec = spring(stiffness = 900f),
+                                label = "bubbleOffset"
+                            )
 
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .offset(x = (-46).dp, y = bubbleTop.coerceAtLeast(0f).dp)
+                                    .offset(x = (-46).dp, y = bubbleTop.coerceAtLeast(0.dp))
                                     .size(56.dp)
                                     .shadow(8.dp, CircleShape)
                                     .clip(CircleShape)
@@ -522,41 +491,53 @@ fun LibraryScreen(
 
             LibraryFilter.ALBUMS -> {
                 AlbumsTabContent(
-                    albums = SampleData.albums,
+                    albums = uiState.albums,
                     onAlbumClick = { album ->
-                        // Play album's tracks
-                        val matchingSong = SampleData.songs.firstOrNull { it.album == album.title } ?: SampleData.songs.first()
-                        playerViewModel.playSong(matchingSong)
+                        val matchingSongs = uiState.songs.filter {
+                            it.albumId == album.albumId || it.album.equals(album.title, ignoreCase = true)
+                        }
+                        matchingSongs.firstOrNull()?.let {
+                            playerViewModel.playSong(it, matchingSongs)
+                        }
                     }
                 )
             }
 
             LibraryFilter.ARTISTS -> {
                 ArtistsTabContent(
-                    artists = SampleData.artists,
+                    artists = uiState.artists,
                     onArtistClick = { artist ->
-                        val matchingSong = SampleData.songs.firstOrNull { it.artist.contains(artist.name) } ?: SampleData.songs.first()
-                        playerViewModel.playSong(matchingSong)
+                        val matchingSongs = uiState.songs.filter {
+                            it.artistId.toString() == artist.id || it.artist.contains(artist.name, ignoreCase = true)
+                        }
+                        matchingSongs.firstOrNull()?.let {
+                            playerViewModel.playSong(it, matchingSongs)
+                        }
                     }
                 )
             }
 
             LibraryFilter.PLAYLISTS -> {
                 PlaylistsTabContent(
-                    playlists = SampleData.playlists,
-                    onPlaylistClick = { playlist ->
-                        val firstSong = SampleData.songs.first()
-                        playerViewModel.playSong(firstSong)
+                    playlists = uiState.playlists,
+                    onPlaylistClick = {
+                        uiState.songs.firstOrNull()?.let {
+                            playerViewModel.playSong(it, uiState.songs)
+                        }
                     }
                 )
             }
 
             LibraryFilter.FOLDERS -> {
                 FoldersTabContent(
-                    folders = SampleData.folders,
+                    folders = uiState.folders,
                     onFolderClick = { folder ->
-                        val firstSong = SampleData.songs.first()
-                        playerViewModel.playSong(firstSong)
+                        val matchingSongs = uiState.songs.filter {
+                            it.relativeFolder == folder.path || it.filePath.contains(folder.name)
+                        }
+                        matchingSongs.firstOrNull()?.let {
+                            playerViewModel.playSong(it, matchingSongs)
+                        }
                     }
                 )
             }
@@ -570,6 +551,11 @@ private fun AlbumsTabContent(
     onAlbumClick: (Album) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (albums.isEmpty()) {
+        EmptyCategoryNotice(message = "No albums found in your library")
+        return
+    }
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxSize(),
@@ -584,10 +570,12 @@ private fun AlbumsTabContent(
                     .clip(RoundedCornerShape(16.dp))
                     .clickable { onAlbumClick(album) }
             ) {
-                ArtworkPlaceholder(
+                AsyncSongArtwork(
+                    albumArtUri = album.albumArtUri,
                     colorSeed = album.colorSeed,
                     size = 150.dp,
                     shape = RoundedCornerShape(18.dp),
+                    iconSize = 44.dp,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -619,6 +607,11 @@ private fun ArtistsTabContent(
     onArtistClick: (Artist) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (artists.isEmpty()) {
+        EmptyCategoryNotice(message = "No artists found in your library")
+        return
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = BottomListScrollPadding)
@@ -682,6 +675,11 @@ private fun PlaylistsTabContent(
     onPlaylistClick: (Playlist) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (playlists.isEmpty()) {
+        EmptyCategoryNotice(message = "No playlists created yet")
+        return
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = BottomListScrollPadding)
@@ -748,6 +746,11 @@ private fun FoldersTabContent(
     onFolderClick: (FolderItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (folders.isEmpty()) {
+        EmptyCategoryNotice(message = "No audio folders found")
+        return
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = BottomListScrollPadding)
@@ -803,6 +806,23 @@ private fun FoldersTabContent(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyCategoryNotice(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 

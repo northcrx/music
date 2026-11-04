@@ -37,7 +37,9 @@ fun ProgressRingIconButton(
     strokeWidth: Dp = 4.dp,
     iconSize: Dp = 24.dp,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
-    trackColor: Color = contentColor.copy(alpha = 0.20f),
+    ringColor: Color = contentColor,
+    trackColor: Color = ringColor.copy(alpha = 0.20f),
+    iconTint: Color = contentColor,
     contentDescription: String? = null,
     enabled: Boolean = true
 ) {
@@ -70,7 +72,7 @@ fun ProgressRingIconButton(
             val sweepAngle = cleanProgress * 360f
             if (sweepAngle > 0f) {
                 drawArc(
-                    color = contentColor,
+                    color = ringColor,
                     startAngle = -90f,
                     sweepAngle = sweepAngle,
                     useCenter = false,
@@ -84,7 +86,7 @@ fun ProgressRingIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = contentColor,
+            tint = iconTint,
             modifier = Modifier.size(iconSize)
         )
     }

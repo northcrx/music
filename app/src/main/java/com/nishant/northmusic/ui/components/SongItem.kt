@@ -74,7 +74,8 @@ fun SongItem(
                 .padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ArtworkPlaceholder(
+            AsyncSongArtwork(
+                artworkUri = song.albumArtUri,
                 size = 46.dp,
                 colorSeed = song.colorSeed,
                 shape = RoundedCornerShape(12.dp)
@@ -107,19 +108,17 @@ fun SongItem(
                 )
             }
 
+            // Right Actions: 3-dot overflow menu
             Box {
                 IconButton(
-                    onClick = {
-                        menuExpanded = true
-                        onOptionsClick()
-                    },
-                    modifier = Modifier.size(48.dp)
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = "Options for ${song.title}",
+                        contentDescription = "Options",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -129,41 +128,42 @@ fun SongItem(
                 ) {
                     DropdownMenuItem(
                         text = { Text("Play next") },
-                        onClick = { menuExpanded = false },
                         leadingIcon = {
                             Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onOptionsClick()
                         }
                     )
                     DropdownMenuItem(
                         text = { Text("Add to playlist") },
-                        onClick = { menuExpanded = false },
                         leadingIcon = {
                             Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(if (song.isFavorite) "Favorited" else "Favorite") },
-                        onClick = { menuExpanded = false },
-                        leadingIcon = {
-                            Icon(
-                                if (song.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                contentDescription = null,
-                                tint = if (song.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onOptionsClick()
                         }
                     )
                     DropdownMenuItem(
                         text = { Text("Share") },
-                        onClick = { menuExpanded = false },
                         leadingIcon = {
                             Icon(Icons.Rounded.Share, contentDescription = null)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onOptionsClick()
                         }
                     )
                     DropdownMenuItem(
                         text = { Text("Track info") },
-                        onClick = { menuExpanded = false },
                         leadingIcon = {
                             Icon(Icons.Rounded.Info, contentDescription = null)
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onOptionsClick()
                         }
                     )
                 }

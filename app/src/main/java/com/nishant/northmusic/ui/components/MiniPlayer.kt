@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -79,9 +80,8 @@ fun MiniPlayer(
         var totalDragX by remember { mutableFloatStateOf(0f) }
         var totalDragY by remember { mutableFloatStateOf(0f) }
 
-        val miniPlayerBackground = MaterialTheme.colorScheme.primaryContainer
-            .copy(alpha = 0.80f)
-            .compositeOver(MaterialTheme.colorScheme.surface)
+        val miniPlayerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
+            .copy(alpha = 0.92f)
 
         Surface(
             modifier = Modifier
@@ -119,7 +119,8 @@ fun MiniPlayer(
                 },
             shape = RoundedCornerShape(28.dp),
             color = miniPlayerBackground,
-            tonalElevation = 0.dp
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
+            tonalElevation = 4.dp
         ) {
             Box(
                 modifier = Modifier
@@ -150,7 +151,7 @@ fun MiniPlayer(
                             text = song.title,
                             style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -158,7 +159,7 @@ fun MiniPlayer(
                         Text(
                             text = song.artist,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -172,7 +173,7 @@ fun MiniPlayer(
                         Icon(
                             imageVector = if (playerState.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                             contentDescription = "Favorite",
-                            tint = if (playerState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer,
+                            tint = if (playerState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -186,9 +187,9 @@ fun MiniPlayer(
                         size = 48.dp,
                         iconSize = 24.dp,
                         strokeWidth = 3.5.dp,
-                        ringColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
-                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer
+                        ringColor = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                        iconTint = MaterialTheme.colorScheme.onSurface
                     )
 
                     // Skip Next Button
@@ -199,7 +200,7 @@ fun MiniPlayer(
                         Icon(
                             imageVector = Icons.Rounded.SkipNext,
                             contentDescription = "Next",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
                     }

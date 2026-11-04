@@ -1,5 +1,10 @@
 package com.nishant.northmusic.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material3.TextButton
+import com.nishant.northmusic.navigation.BottomListScrollPadding
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -204,6 +209,16 @@ fun DownloadsScreen(
                         )
                     },
                     actions = {
+                        IconButton(
+                            onClick = { showAddUrlSheet = true },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.AddLink,
+                                contentDescription = "Add URL",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         Box {
                             IconButton(
                                 onClick = { topMenuExpanded = true },
@@ -282,6 +297,68 @@ fun DownloadsScreen(
                         containerColor = MaterialTheme.colorScheme.surface
                     )
                 )
+            }
+
+            // Quick Paste URL Download Bar in Upper Section
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clickable { showAddUrlSheet = true },
+                shape = PillShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Link,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Paste Spotify, YouTube, or JioSaavn link...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Surface(
+                        shape = PillShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        modifier = Modifier.clickable {
+                            val clipText = clipboardManager.getText()?.text
+                            if (!clipText.isNullOrBlank()) {
+                                urlInputText = clipText
+                            }
+                            showAddUrlSheet = true
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ContentPaste,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Paste",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
 
             // Summary card (same style as Home tiles: surfaceContainer, 24dp corners, 16dp padding)
@@ -436,7 +513,7 @@ fun DownloadsScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Tap the link button below to download audio streams directly.",
+                            text = "Tap 'Paste link' above to download audio streams directly.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -447,7 +524,7 @@ fun DownloadsScreen(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 88.dp)
+                    contentPadding = PaddingValues(bottom = BottomListScrollPadding)
                 ) {
                     items(
                         items = uiState.currentList,
@@ -480,28 +557,7 @@ fun DownloadsScreen(
             }
         }
 
-        // ADD URL BUTTON: Regular FloatingActionButton (link icon) bottom right, 16dp above mini player, hides when scrolling down
-        AnimatedVisibility(
-            visible = !uiState.isSelectionMode && !isScrollingDown,
-            enter = scaleIn() + fadeIn(),
-            exit = scaleOut() + fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 16.dp)
-        ) {
-            FloatingActionButton(
-                onClick = { showAddUrlSheet = true },
-                shape = CircleShape,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.AddLink,
-                    contentDescription = "Add URL",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+
     }
 
     // ModalBottomSheet for Adding URLs

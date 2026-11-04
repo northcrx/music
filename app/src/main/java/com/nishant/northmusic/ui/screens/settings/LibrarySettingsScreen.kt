@@ -257,7 +257,7 @@ fun LibrarySettingsScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.Folder,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(22.dp)
                                 )
                                 Column {
@@ -287,7 +287,7 @@ fun LibrarySettingsScreen(
                                     Icon(
                                         imageVector = Icons.Rounded.CheckCircle,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Text(
@@ -412,7 +412,7 @@ fun LibrarySettingsScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.AutoFixHigh,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Column {
@@ -457,7 +457,7 @@ fun LibrarySettingsScreen(
                     Icon(
                         imageVector = Icons.Rounded.Sync,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .size(22.dp)
                             .then(if (state.isRescanning) Modifier.rotate(rotationAngle) else Modifier)
@@ -729,7 +729,7 @@ fun LibrarySettingsScreen(
                 Icon(
                     imageVector = Icons.Rounded.AutoFixHigh,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(32.dp)
                 )
             },
@@ -767,7 +767,7 @@ fun LibrarySettingsScreen(
                             text = "Matched items:",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         fixState.items.forEach { item ->
@@ -783,7 +783,7 @@ fun LibrarySettingsScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.CheckCircle,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Column(modifier = Modifier.weight(1f)) {

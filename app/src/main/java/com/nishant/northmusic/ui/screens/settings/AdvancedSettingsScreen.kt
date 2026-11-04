@@ -87,35 +87,37 @@ fun AdvancedSettingsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            SettingsSectionTitle(title = "Localization & Display")
+            SettingsSectionTitle(title = "Localization")
 
             SettingsValueRow(
                 title = "App language",
-                subtitle = "Select user interface locale",
                 value = state.appLanguage,
-                onClick = { /* TODO: Language picker */ },
-                icon = Icons.Rounded.Language
+                subtitle = "Choose interface localization",
+                icon = Icons.Rounded.Language,
+                onClick = { /* TODO: Open language picker dialog */ }
             )
+
+            SettingsSectionTitle(title = "Backup & Data")
+
+            SettingsValueRow(
+                title = "Backup & Restore",
+                value = "Export / Import",
+                subtitle = state.backupAndRestoreInfo,
+                icon = Icons.Rounded.Backup,
+                onClick = { /* TODO: Open backup/restore options */ }
+            )
+
+            SettingsSectionTitle(title = "Display & Screen")
 
             SettingsSwitchRow(
                 title = "Rotation lock",
-                subtitle = "Prevent landscape orientation during player playback",
+                subtitle = "Keep screen locked in portrait orientation while playback is active",
                 checked = state.rotationLock,
                 onCheckedChange = { settingsViewModel.setRotationLock(it) },
                 icon = Icons.Rounded.ScreenRotation
             )
 
-            SettingsSectionTitle(title = "Data & Configuration")
-
-            SettingsValueRow(
-                title = "Backup and restore",
-                subtitle = "Export or import app settings, playlists, and tags",
-                value = state.backupAndRestoreInfo,
-                onClick = { /* TODO: Backup dialog */ },
-                icon = Icons.Rounded.Backup
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
+            SettingsSectionTitle(title = "Setup & Initialization")
 
             // Run Setup Again Card
             Card(
@@ -134,7 +136,7 @@ fun AdvancedSettingsScreen(
                     Icon(
                         imageVector = Icons.Rounded.AutoFixHigh,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(28.dp)
                     )
                     Column(modifier = Modifier.weight(1f)) {

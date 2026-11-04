@@ -2,13 +2,16 @@ package com.nishant.northmusic.ui.screens.settings
 
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,19 +32,16 @@ import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Tab
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -53,7 +52,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -63,9 +61,10 @@ import com.nishant.northmusic.data.model.ThemeMode
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import com.nishant.northmusic.ui.components.SettingsSectionTitle
 import com.nishant.northmusic.ui.components.SettingsSwitchRow
+import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AppearanceSettingsScreen(
     settingsViewModel: SettingsViewModel,
@@ -84,8 +83,7 @@ fun AppearanceSettingsScreen(
             title = {
                 Text(
                     text = "Appearance",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             },
@@ -110,7 +108,7 @@ fun AppearanceSettingsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = BottomListScrollPadding),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Accent Color Swatches
             item {
@@ -131,7 +129,7 @@ fun AppearanceSettingsScreen(
                             Icon(
                                 imageVector = Icons.Rounded.ColorLens,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
@@ -150,37 +148,31 @@ fun AppearanceSettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        // Circular swatches (Teal, Blue, Green, Orange, Rose, Red, Purple)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             AccentColor.entries.forEach { accent ->
                                 val isSelected = state.accentColor == accent
+                                val swatchColor = Color(accent.hexColor)
                                 val isEnabled = !state.dynamicColor
-                                val circleColor = Color(accent.hexColor)
 
                                 Box(
                                     modifier = Modifier
-                                        .size(48.dp)
+                                        .size(46.dp)
                                         .clip(CircleShape)
-                                        .background(circleColor)
-                                        .alpha(if (isEnabled) 1.0f else 0.38f)
+                                        .background(if (isEnabled) swatchColor else swatchColor.copy(alpha = 0.35f))
+                                        .border(
+                                            width = if (isSelected) 3.dp else 0.dp,
+                                            color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
+                                            shape = CircleShape
+                                        )
                                         .clickable(enabled = isEnabled) {
                                             settingsViewModel.setAccentColor(accent)
-                                        }
-                                        .then(
-                                            if (isSelected && isEnabled) {
-                                                Modifier.border(
-                                                    width = 3.dp,
-                                                    color = MaterialTheme.colorScheme.onSurface,
-                                                    shape = CircleShape
-                                                )
-                                            } else Modifier
-                                        ),
+                                        },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (isSelected) {
@@ -194,11 +186,19 @@ fun AppearanceSettingsScreen(
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Selected: ${state.accentColor.label}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
 
-            // Dynamic Color Toggle (Material You)
+            // Dynamic Color Toggle
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -208,6 +208,7 @@ fun AppearanceSettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(22.dp))
                             .clickable(enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                 settingsViewModel.toggleDynamicColor(!state.dynamicColor)
                             }
@@ -223,7 +224,7 @@ fun AppearanceSettingsScreen(
                             Icon(
                                 imageVector = Icons.Rounded.Palette,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
                             )
                             Column {
@@ -283,7 +284,7 @@ fun AppearanceSettingsScreen(
                             Icon(
                                 imageVector = Icons.Rounded.DarkMode,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
@@ -294,44 +295,48 @@ fun AppearanceSettingsScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        SingleChoiceSegmentedButtonRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            ThemeMode.entries.forEachIndexed { index, mode ->
-                                SegmentedButton(
-                                    selected = state.themeMode == mode,
+                            ThemeMode.entries.forEach { mode ->
+                                val selected = state.themeMode == mode
+                                FilterChip(
+                                    selected = selected,
                                     onClick = { settingsViewModel.setThemeMode(mode) },
-                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = ThemeMode.entries.size),
-                                    modifier = Modifier.height(48.dp)
-                                ) {
-                                    Text(
-                                        text = mode.label,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        maxLines = 1,
-                                        softWrap = false
+                                    label = { Text(mode.label) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = PillShape,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                                     )
-                                }
+                                )
                             }
                         }
                     }
                 }
             }
 
-            // Additional Appearance Controls: Larger header image, Tab titles mode, Enable scrolling text for long titles
+            // Layout & Display Tweaks Section
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        SettingsSectionTitle(title = "LAYOUT & TEXT")
+
                         SettingsSwitchRow(
                             title = "Larger header image",
-                            subtitle = "Expand artist and playlist hero artwork headers",
+                            subtitle = "Expand artist and album banner in Now Playing screen",
                             checked = state.largerHeaderImage,
                             onCheckedChange = { settingsViewModel.setLargerHeaderImage(it) },
                             icon = Icons.Rounded.Image
@@ -350,7 +355,7 @@ fun AppearanceSettingsScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.Tab,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Column {
@@ -370,27 +375,30 @@ fun AppearanceSettingsScreen(
 
                             Spacer(modifier = Modifier.height(10.dp))
 
-                            val modes = listOf("Always", "Selected", "Never")
-                            SingleChoiceSegmentedButtonRow(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                modes.forEachIndexed { index, mode ->
-                                    SegmentedButton(
-                                        selected = state.tabTitlesMode == mode,
+                                listOf("Always", "Selected", "Never").forEach { mode ->
+                                    val selected = state.tabTitlesMode == mode
+                                    FilterChip(
+                                        selected = selected,
                                         onClick = { settingsViewModel.setTabTitlesMode(mode) },
-                                        shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size)
-                                    ) {
-                                        Text(mode, style = MaterialTheme.typography.labelMedium)
-                                    }
+                                        label = { Text(mode) },
+                                        modifier = Modifier.weight(1f),
+                                        shape = PillShape,
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    )
                                 }
                             }
                         }
 
                         SettingsSwitchRow(
-                            title = "Enable scrolling text for long titles",
-                            subtitle = "Marquee animation for track names that exceed row width",
+                            title = "Enable scrolling text",
+                            subtitle = "Marquee animation for long song and album titles",
                             checked = state.scrollingTextForLongTitles,
                             onCheckedChange = { settingsViewModel.setScrollingTextForLongTitles(it) },
                             icon = Icons.Rounded.TextFields

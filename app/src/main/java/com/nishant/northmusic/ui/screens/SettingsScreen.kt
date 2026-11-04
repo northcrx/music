@@ -50,8 +50,8 @@ import com.nishant.northmusic.navigation.BottomListScrollPadding
 
 /**
  * Settings Hub:
- * Unified settings layout where options are grouped into cohesive sections on one page,
- * with subtle dividers, eliminating disjointed isolated cards.
+ * Unified settings layout with neutral white icons (unaffected by accent color changes),
+ * grouped into cohesive sections on one page.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +89,7 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.Rounded.Settings,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -117,7 +117,7 @@ fun SettingsScreen(
                     text = "PLAYBACK & INTERFACE",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
                 )
 
@@ -173,7 +173,7 @@ fun SettingsScreen(
                     text = "MEDIA & STORAGE",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
                 )
 
@@ -219,7 +219,7 @@ fun SettingsScreen(
                     text = "SYSTEM & ABOUT",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
                 )
 
@@ -282,7 +282,7 @@ fun SettingsGroupRow(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp)
                     )
                 }

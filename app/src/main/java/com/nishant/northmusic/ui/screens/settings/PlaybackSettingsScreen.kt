@@ -29,14 +29,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -128,7 +127,7 @@ fun PlaybackSettingsScreen(
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 modifier = Modifier.size(42.dp)
                             ) {
                                 Row(
@@ -138,7 +137,7 @@ fun PlaybackSettingsScreen(
                                     Icon(
                                         imageVector = Icons.Rounded.GraphicEq,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -190,12 +189,22 @@ fun PlaybackSettingsScreen(
                             icon = Icons.Rounded.Tune
                         )
 
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
                         SettingsSwitchRow(
                             title = "Audio normalization",
                             subtitle = "Balance volume differences across varied albums and artists",
                             checked = state.audioNormalization,
                             onCheckedChange = { settingsViewModel.toggleAudioNormalization(it) },
                             icon = Icons.Rounded.Hearing
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
                         )
 
                         SettingsValueRow(
@@ -206,12 +215,22 @@ fun PlaybackSettingsScreen(
                             icon = Icons.AutoMirrored.Rounded.VolumeUp
                         )
 
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
                         SettingsSwitchRow(
                             title = "High quality audio",
                             subtitle = "Prioritize lossless 24-bit 96kHz stream decoding",
                             checked = state.highQualityAudio,
                             onCheckedChange = { settingsViewModel.toggleHighQualityAudio(it) },
                             icon = Icons.Rounded.HighQuality
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
                         )
 
                         SettingsSwitchRow(
@@ -246,6 +265,11 @@ fun PlaybackSettingsScreen(
                             icon = Icons.Rounded.Headphones
                         )
 
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
                         SettingsSwitchRow(
                             title = "Pause on disconnect",
                             subtitle = "Pause playback when unplugging headphones",
@@ -262,6 +286,11 @@ fun PlaybackSettingsScreen(
                             checked = state.bluetoothResumeOnConnect,
                             onCheckedChange = { settingsViewModel.setBluetoothResume(it) },
                             icon = Icons.Rounded.Bluetooth
+                        )
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
                         )
 
                         SettingsSwitchRow(

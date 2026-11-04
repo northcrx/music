@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,6 +23,7 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,7 +32,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -46,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nishant.northmusic.navigation.BottomListScrollPadding
+import com.nishant.northmusic.ui.theme.PillShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +93,7 @@ fun AboutSettingsScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = BottomListScrollPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // App Branding Card with 40dp logo slot placeholder
+            // App Branding Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -107,17 +107,16 @@ fun AboutSettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // 40dp square slot placeholder for app logo
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Rounded.MusicNote,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    tint = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(26.dp)
                                 )
                             }
@@ -164,7 +163,7 @@ fun AboutSettingsScreen(
                             Icon(
                                 imageVector = Icons.Rounded.RestartAlt,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
                             )
                             Column {
@@ -214,7 +213,7 @@ fun AboutSettingsScreen(
                             Icon(
                                 imageVector = Icons.Rounded.Description,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
                             )
                             Column {
@@ -245,17 +244,38 @@ fun AboutSettingsScreen(
     if (showLicensesDialog) {
         AlertDialog(
             onDismissRequest = { showLicensesDialog = false },
-            title = { Text("Open Source Licenses") },
+            title = {
+                Text(
+                    text = "Open Source Licenses",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("• Android Jetpack Compose - Apache 2.0", style = MaterialTheme.typography.bodyMedium)
-                    Text("• Material Design 3 Components - Apache 2.0", style = MaterialTheme.typography.bodyMedium)
-                    Text("• Kotlin Coroutines & Serialization - Apache 2.0", style = MaterialTheme.typography.bodyMedium)
-                    Text("• Google Fonts (Material Symbols) - Apache 2.0", style = MaterialTheme.typography.bodyMedium)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "• Jetpack Compose & Material 3 (Apache License 2.0)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "• AndroidX Navigation Compose (Apache License 2.0)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "• Google Material Symbols Rounded (Apache License 2.0)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "• Kotlin Coroutines & Flow (Apache License 2.0)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showLicensesDialog = false }) {
+                Button(
+                    onClick = { showLicensesDialog = false },
+                    shape = PillShape
+                ) {
                     Text("Close")
                 }
             }

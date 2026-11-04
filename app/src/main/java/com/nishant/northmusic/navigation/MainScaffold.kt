@@ -13,21 +13,28 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,9 +44,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -66,6 +75,7 @@ import com.nishant.northmusic.ui.screens.settings.NetworkSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.NowPlayingSettingsScreen
 import com.nishant.northmusic.ui.screens.settings.PlaybackSettingsScreen
 import com.nishant.northmusic.ui.screens.setup.SetupWizardScreen
+import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.DownloadsViewModel
 import com.nishant.northmusic.ui.viewmodels.EqualizerViewModel
 import com.nishant.northmusic.ui.viewmodels.HomeViewModel
@@ -73,7 +83,7 @@ import com.nishant.northmusic.ui.viewmodels.LibraryViewModel
 import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
 
-val BottomListScrollPadding = 88.dp
+val BottomListScrollPadding = 110.dp
 
 @Composable
 fun MainScaffold(
@@ -175,7 +185,7 @@ fun MainScaffold(
                     onDismiss = { isMiniPlayerDismissed = true }
                 )
 
-                // 2 or 3-Item Clean Bottom Navigation Bar
+                // Sleek Pill-Dock Bottom Navigation Bar matching Home screen curves
                 AnimatedVisibility(
                     visible = showBottomNav,
                     enter = slideInVertically(
@@ -187,50 +197,82 @@ fun MainScaffold(
                         animationSpec = tween(durationMillis = 180)
                     ) + fadeOut(animationSpec = tween(durationMillis = 120))
                 ) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 24.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        BottomNavItems.forEach { item ->
-                            val isSelected = currentRoute == item.route
-                            NavigationBarItem(
-                                selected = isSelected,
-                                onClick = {
-                                    if (currentRoute != item.route) {
-                                        if (settingsState.rememberLastPage) {
-                                            settingsViewModel.setLastOpenedRoute(item.route)
-                                        }
-                                        navController.navigate(item.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
+                        Surface(
+                            shape = RoundedCornerShape(26.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.98f),
+                            tonalElevation = 4.dp,
+                            shadowElevation = 8.dp,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(54.dp)
+                                    .padding(horizontal = 6.dp, vertical = 5.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BottomNavItems.forEach { item ->
+                                    val isSelected = currentRoute == item.route
+                                    val showLabel = settingsState.tabTitlesMode == "Always" ||
+                                            (settingsState.tabTitlesMode == "Selected" && isSelected)
+
+                                    Surface(
+                                        onClick = {
+                                            if (currentRoute != item.route) {
+                                                if (settingsState.rememberLastPage) {
+                                                    settingsViewModel.setLastOpenedRoute(item.route)
+                                                }
+                                                navController.navigate(item.route) {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
                                             }
-                                            launchSingleTop = true
-                                            restoreState = true
+                                        },
+                                        shape = PillShape,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .padding(horizontal = 3.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(
+                                                    id = if (isSelected) item.selectedIconRes else item.unselectedIconRes
+                                                ),
+                                                contentDescription = item.label,
+                                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            if (showLabel && settingsState.tabTitlesMode != "Never") {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = item.label,
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1
+                                                )
+                                            }
                                         }
                                     }
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (isSelected) item.selectedIconRes else item.unselectedIconRes
-                                        ),
-                                        contentDescription = item.label
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = item.label,
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
+                                }
+                            }
                         }
                     }
                 }

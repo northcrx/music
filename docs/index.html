@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>North Music — Nocturnal High-Res Audio Player for Android</title>
-    <meta name="description" content="Download North Music v0.1 — A sleek, responsive nocturnal music player designed with Material 3 Expressive. High-res audio, hardware equalizer, sleep timer, live lyrics, and offline playback.">
+    <title>North Music v0.2 — Nocturnal High-Res Audio Player & 320k Streamer</title>
+    <meta name="description" content="Download North Music v0.2 — Modern hybrid music player for Android. 320kbps online music search, instant streaming, link resolver for Spotify/YouTube, high-speed downloader with auto ID3 tagging, and hardware equalizer.">
     <meta name="theme-color" content="#0B0F17">
     
     <!-- Open Graph / Social Meta -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="North Music — Nocturnal Audio Player for Android">
-    <meta property="og:description" content="Download North Music v0.1 APK. 100% offline, zero ads, real-time equalizer, sleep timer, and live lyrics.">
+    <meta property="og:title" content="North Music v0.2 — High-Res Audio Player & Downloader">
+    <meta property="og:description" content="Download North Music v0.2 APK. Online 320k CDN indexing, instant streaming, Spotify/YouTube link resolver, offline downloader, equalizer, and live lyrics. Zero ads.">
     <meta property="og:image" content="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Crect width='108' height='108' rx='28' fill='%232563EB'/%3E%3Cpath fill='%23ffffff' d='M28.5,48.5a3.5,3.5 0 0 1 7,0v11a3.5,3.5 0 0 1 -7,0z M39.5,37.5a3.5,3.5 0 0 1 7,0v33a3.5,3.5 0 0 1 -7,0z M50.5,28.5a3.5,3.5 0 0 1 7,0v51a3.5,3.5 0 0 1 -7,0z M61.5,41.5a3.5,3.5 0 0 1 7,0v25a3.5,3.5 0 0 1 -7,0z M72.5,47.5a3.5,3.5 0 0 1 7,0v13a3.5,3.5 0 0 1 -7,0z'/%3E%3C/svg%3E">
 
     <!-- Favicon -->
@@ -20,8 +20,8 @@
         :root {
             --bg-dark: #080C14;
             --bg-surface: #0F172A;
-            --bg-card: rgba(18, 26, 44, 0.7);
-            --bg-card-hover: rgba(28, 40, 68, 0.85);
+            --bg-card: rgba(18, 26, 44, 0.75);
+            --bg-card-hover: rgba(28, 40, 68, 0.9);
             --border-subtle: rgba(255, 255, 255, 0.08);
             --border-highlight: rgba(37, 99, 235, 0.35);
             --accent-blue: #2563EB;
@@ -35,6 +35,7 @@
             --warning-border: rgba(245, 158, 11, 0.3);
             --warning-text: #FBBF24;
             --success-color: #10B981;
+            --tag-new: #06B6D4;
             --pill-radius: 9999px;
             --card-radius: 24px;
         }
@@ -64,7 +65,7 @@
             transform: translateX(-50%);
             width: 1000px;
             height: 600px;
-            background: radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.22) 0%, rgba(20, 184, 166, 0.12) 40%, transparent 70%);
+            background: radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.24) 0%, rgba(20, 184, 166, 0.14) 40%, transparent 70%);
             pointer-events: none;
             z-index: 0;
             filter: blur(40px);
@@ -149,7 +150,7 @@
 
         /* Hero Section */
         .hero {
-            padding: 72px 0 54px 0;
+            padding: 72px 0 48px 0;
             text-align: center;
             display: flex;
             flex-direction: column;
@@ -191,7 +192,7 @@
             letter-spacing: -0.03em;
             line-height: 1.15;
             margin-bottom: 20px;
-            max-width: 840px;
+            max-width: 860px;
             background: linear-gradient(180deg, #FFFFFF 30%, #94A3B8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -200,9 +201,23 @@
         .hero p {
             font-size: 1.25rem;
             color: var(--text-secondary);
-            max-width: 680px;
+            max-width: 720px;
             line-height: 1.6;
             margin-bottom: 36px;
+        }
+
+        .hero-banner-new {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            padding: 8px 18px;
+            border-radius: var(--pill-radius);
+            font-size: 0.95rem;
+            color: #22D3EE;
+            margin-bottom: 24px;
+            font-weight: 500;
         }
 
         /* Action Buttons */
@@ -259,48 +274,114 @@
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.09);
+            background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.2);
-            color: #ffffff;
+            transform: translateY(-2px);
         }
 
         .meta-info {
             display: flex;
             align-items: center;
-            gap: 20px;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
             font-size: 0.9rem;
             color: var(--text-muted);
-            flex-wrap: wrap;
-            justify-content: center;
+            margin-top: 8px;
         }
 
         .meta-info span {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
         }
 
-        /* Feature Grid */
+        /* Changelog Highlight Banner */
+        .catalog-banner {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(6, 182, 212, 0.08));
+            border: 1px solid var(--border-highlight);
+            border-radius: 20px;
+            padding: 24px 30px;
+            margin: 40px 0 60px 0;
+            text-align: left;
+        }
+
+        .catalog-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .catalog-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .catalog-tag {
+            background: #2563EB;
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: var(--pill-radius);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 14px;
+        }
+
+        .catalog-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .catalog-item svg {
+            flex-shrink: 0;
+            margin-top: 3px;
+            color: #38BDF8;
+        }
+
+        .catalog-item strong {
+            color: var(--text-primary);
+        }
+
+        /* Features Section */
         .features {
-            padding: 50px 0;
+            padding: 40px 0 80px 0;
         }
 
         .section-header {
             text-align: center;
-            margin-bottom: 48px;
+            margin-bottom: 56px;
         }
 
         .section-tag {
-            font-size: 0.82rem;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: var(--accent-teal);
+            display: inline-block;
+            font-size: 0.85rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent-blue-bright);
+            margin-bottom: 12px;
         }
 
         .section-title {
-            font-size: 2.25rem;
+            font-size: 2.4rem;
             font-weight: 800;
             letter-spacing: -0.02em;
         }
@@ -312,53 +393,55 @@
         }
 
         .feature-card {
-            background: var(--bg-card);
+            background-color: var(--bg-card);
             border: 1px solid var(--border-subtle);
             border-radius: var(--card-radius);
-            padding: 32px;
-            backdrop-filter: blur(16px);
-            transition: all 0.3s ease;
+            padding: 32px 28px;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
             overflow: hidden;
         }
 
         .feature-card:hover {
-            transform: translateY(-4px);
+            background-color: var(--bg-card-hover);
             border-color: var(--border-highlight);
-            background: var(--bg-card-hover);
-            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .badge-new {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #0284C7, #06B6D4);
+            color: #ffffff;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 3px 9px;
+            border-radius: var(--pill-radius);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .feature-icon-wrapper {
-            width: 52px;
-            height: 52px;
+            width: 54px;
+            height: 54px;
             border-radius: 16px;
-            background: rgba(37, 99, 235, 0.12);
+            background: rgba(37, 99, 235, 0.15);
             border: 1px solid var(--border-highlight);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
             color: var(--accent-blue-bright);
-        }
-
-        .feature-card:nth-child(2) .feature-icon-wrapper {
-            background: rgba(20, 184, 166, 0.12);
-            border-color: rgba(20, 184, 166, 0.35);
-            color: var(--accent-teal);
-        }
-
-        .feature-card:nth-child(3) .feature-icon-wrapper {
-            background: rgba(124, 58, 237, 0.12);
-            border-color: rgba(124, 58, 237, 0.35);
-            color: #A78BFA;
+            margin-bottom: 22px;
         }
 
         .feature-card h3 {
             font-size: 1.3rem;
             font-weight: 700;
             margin-bottom: 12px;
-            color: var(--text-primary);
+            letter-spacing: -0.01em;
         }
 
         .feature-card p {
@@ -369,120 +452,117 @@
 
         /* Installation Guide Section */
         .install-section {
-            padding: 70px 0;
+            padding: 20px 0 80px 0;
         }
 
         .install-box {
-            background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(11, 15, 23, 0.95) 100%);
+            background: var(--bg-surface);
             border: 1px solid var(--border-subtle);
-            border-radius: var(--card-radius);
-            padding: 48px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border-radius: 32px;
+            padding: 48px 36px;
             position: relative;
+            overflow: hidden;
         }
 
         .notice-banner {
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
             background: var(--warning-bg);
             border: 1px solid var(--warning-border);
             border-radius: 18px;
             padding: 20px 24px;
-            margin-bottom: 40px;
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 36px;
         }
 
         .notice-banner svg {
-            flex-shrink: 0;
             color: var(--warning-text);
+            flex-shrink: 0;
             margin-top: 2px;
         }
 
         .notice-content h4 {
-            color: var(--warning-text);
             font-size: 1.05rem;
+            color: var(--warning-text);
             font-weight: 700;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .notice-content p {
-            color: #E2E8F0;
-            font-size: 0.92rem;
-            line-height: 1.55;
+            font-size: 0.95rem;
+            color: #FDE68A;
+            line-height: 1.5;
         }
 
         .steps-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 24px;
-            margin-bottom: 40px;
+            gap: 20px;
+            margin-bottom: 32px;
         }
 
         .step-item {
             background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 18px;
-            padding: 24px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 24px 20px;
             position: relative;
         }
 
         .step-number {
             width: 36px;
             height: 36px;
-            border-radius: 50%;
+            border-radius: 12px;
             background: var(--accent-blue);
             color: #ffffff;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            font-size: 1rem;
             margin-bottom: 16px;
-            box-shadow: 0 4px 12px var(--accent-glow);
+            font-size: 1.1rem;
         }
 
         .step-item h4 {
-            font-size: 1.15rem;
+            font-size: 1.1rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .step-item p {
             color: var(--text-secondary);
             font-size: 0.92rem;
-            line-height: 1.55;
+            line-height: 1.5;
         }
 
         .badge-pill {
             display: inline-block;
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
+            background: rgba(37, 99, 235, 0.2);
+            color: #93C5FD;
             padding: 2px 8px;
             border-radius: 6px;
-            font-family: monospace;
             font-size: 0.85rem;
-            font-weight: 600;
+            font-family: monospace;
         }
 
-        /* FAQ Accordion */
+        /* FAQ Section */
         .faq-section {
-            padding: 50px 0 80px 0;
+            padding: 20px 0 80px 0;
         }
 
         .faq-list {
-            max-width: 800px;
-            margin: 0 auto;
             display: flex;
             flex-direction: column;
             gap: 16px;
+            max-width: 820px;
+            margin: 0 auto;
         }
 
         .faq-item {
-            background: var(--bg-card);
+            background-color: var(--bg-card);
             border: 1px solid var(--border-subtle);
             border-radius: 18px;
-            padding: 22px 28px;
+            padding: 22px 26px;
         }
 
         .faq-item h4 {
@@ -551,10 +631,11 @@
 
             <div class="nav-links">
                 <a href="#features" class="nav-link-item">Features</a>
+                <a href="#catalog" class="nav-link-item">What's New in v0.2</a>
                 <a href="#install-guide" class="nav-link-item">Install Guide</a>
                 <a href="https://github.com/northcrx/music" class="nav-link-item" target="_blank" rel="noopener">GitHub</a>
-                <a href="https://github.com/northcrx/music/releases/download/v0.1/NorthMusic-v0.1.apk" class="btn-nav-download">
-                    Download APK
+                <a href="https://github.com/northcrx/music/releases/download/v0.2/NorthMusic-v0.2.apk" class="btn-nav-download">
+                    Download APK v0.2
                 </a>
             </div>
         </nav>
@@ -563,19 +644,23 @@
         <section class="hero">
             <div class="version-badge">
                 <span class="version-dot"></span>
-                <span>Version 0.1 Beta Released</span>
+                <span>Version 0.2 Released — Online Streaming & Downloader</span>
             </div>
 
-            <h1>Nocturnal High-Res Audio Player for Android</h1>
-            <p>A sleek, responsive music player built with Material 3 Expressive. Hardware-accelerated equalizer, seamless sleep timer, live lyrics, and offline playback.</p>
+            <div class="hero-banner-new">
+                ✨ No longer just offline! Search, stream & download in 320kbps studio quality
+            </div>
+
+            <h1>Nocturnal High-Res Audio Player & 320k Streamer</h1>
+            <p>North Music now blends high-fidelity local library playback with online 320kbps music indexing, instant CDN streaming, smart link resolution for Spotify & YouTube Music, and background downloads with auto ID3 tags.</p>
 
             <div class="hero-actions">
                 <!-- Direct APK Download Button from GitHub Release -->
-                <a href="https://github.com/northcrx/music/releases/download/v0.1/NorthMusic-v0.1.apk" class="btn-primary" id="download-btn">
+                <a href="https://github.com/northcrx/music/releases/download/v0.2/NorthMusic-v0.2.apk" class="btn-primary" id="download-btn">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
                     </svg>
-                    <span>Download v0.1 APK (54.3 MB)</span>
+                    <span>Download v0.2 APK (54.5 MB)</span>
                 </a>
 
                 <a href="#install-guide" class="btn-secondary">
@@ -587,11 +672,11 @@
                     <span>Installation Guide</span>
                 </a>
 
-                <a href="https://github.com/northcrx/music/releases/tag/v0.1" target="_blank" rel="noopener" class="btn-secondary" style="border-color: rgba(37, 99, 235, 0.35);">
+                <a href="https://github.com/northcrx/music/releases/tag/v0.2" target="_blank" rel="noopener" class="btn-secondary" style="border-color: rgba(37, 99, 235, 0.35);">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
                     </svg>
-                    <span>Release on GitHub</span>
+                    <span>Release v0.2 on GitHub</span>
                 </a>
             </div>
 
@@ -601,7 +686,9 @@
                     Android 10+ (API 29–36)
                 </span>
                 <span>•</span>
-                <span>100% Offline & Private</span>
+                <span>Hybrid Online & Offline</span>
+                <span>•</span>
+                <span>320kbps CDN Quality</span>
                 <span>•</span>
                 <span>Zero Ads</span>
                 <span>•</span>
@@ -609,78 +696,121 @@
             </div>
         </section>
 
+        <!-- What's New in v0.2 Catalog Section -->
+        <section class="catalog-banner" id="catalog">
+            <div class="catalog-header">
+                <div class="catalog-title">
+                    <span>What's New in Version 0.2</span>
+                    <span class="catalog-tag">Major Update</span>
+                </div>
+                <div style="font-size: 0.88rem; color: var(--text-secondary);">Published November 2026</div>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.98rem; margin-bottom: 16px;">
+                North Music evolves from a purely local player into a powerhouse hybrid music platform. Here is the complete catalog of improvements in this milestone release:
+            </p>
+            <div class="catalog-grid">
+                <div class="catalog-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <div><strong>Online 320k Music Search:</strong> Real-time indexing from studio CDN directly within the Home search bar with 48dp artwork.</div>
+                </div>
+                <div class="catalog-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <div><strong>Instant Tap-to-Stream:</strong> Tap any search result to play immediately via ExoPlayer streaming engine with zero delay.</div>
+                </div>
+                <div class="catalog-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <div><strong>Spotify & YouTube Resolver:</strong> Paste links from Spotify, YouTube Music, or JioSaavn to auto-resolve metadata and download.</div>
+                </div>
+                <div class="catalog-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <div><strong>Auto ID3 & Artwork Embedding:</strong> Downloaded files are saved to your Music folder with embedded album art and track metadata.</div>
+                </div>
+                <div class="catalog-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <div><strong>Redesigned Pill Navigation:</strong> Compact 54dp floating pill dock with snug spacing, eliminating wasted screen space.</div>
+                </div>
+                <div class="catalog-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    <div><strong>Curated Downloads Section:</strong> Home screen now features a dedicated section showcasing all your downloaded songs.</div>
+                </div>
+            </div>
+        </section>
+
         <!-- Feature Highlights -->
         <section class="features" id="features">
             <div class="section-header">
                 <div class="section-tag">Crafted For Audiophiles</div>
-                <h2 class="section-title">Designed with Precision</h2>
+                <h2 class="section-title">Everything You Need In One App</h2>
             </div>
 
             <div class="features-grid">
-                <!-- Feature 1 -->
+                <!-- Feature 1: Online Search & Stream -->
                 <div class="feature-card">
+                    <span class="badge-new">New in v0.2</span>
                     <div class="feature-icon-wrapper">
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
                         </svg>
                     </div>
-                    <h3>Local MediaStore Audio</h3>
-                    <p>High-resolution local playback powered by Jetpack Media3 & ExoPlayer. Automated smart grouping by artist & album, gapless audio, and full blacklist folder management.</p>
+                    <h3>Online 320kbps Indexing & Stream</h3>
+                    <p>Search any track, album, or artist directly in the search bar. Enjoy instant, bufferless streaming powered by high-speed studio CDN with 320kbps audio quality.</p>
                 </div>
 
-                <!-- Feature 2 -->
+                <!-- Feature 2: Smart Link Resolver & Downloader -->
+                <div class="feature-card">
+                    <span class="badge-new">New in v0.2</span>
+                    <div class="feature-icon-wrapper">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                        </svg>
+                    </div>
+                    <h3>Spotify & YouTube Link Resolver</h3>
+                    <p>Paste any Spotify, YouTube Music, or JioSaavn song URL. North Music automatically detects the link, resolves song details, and downloads the full track with high-res artwork.</p>
+                </div>
+
+                <!-- Feature 3: Redesigned Compact Floating Pill Dock -->
+                <div class="feature-card">
+                    <span class="badge-new">New in v0.2</span>
+                    <div class="feature-icon-wrapper">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                        </svg>
+                    </div>
+                    <h3>Ergonomic Floating Pill Dock</h3>
+                    <p>Redesigned bottom navigation bar based on Home screen card geometry. Compact 54dp floating pill dock with snug, thumb-friendly spacing that saves screen real estate.</p>
+                </div>
+
+                <!-- Feature 4: Parametric EQ -->
                 <div class="feature-card">
                     <div class="feature-icon-wrapper">
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M7 20h2V8H7v12zm4 0h2V4h-2v16zm4 0h2v-8h-2v8zm4 0h2V10h-2v10z"/>
                         </svg>
                     </div>
-                    <h3>Parametric Equalizer</h3>
-                    <p>Real hardware-backed Android audiofx Equalizer, Bass Boost, Virtualizer, and Loudness Enhancer with automated output device profiles for Bluetooth, Wired, and Speaker.</p>
+                    <h3>Parametric Hardware Equalizer</h3>
+                    <p>Android AudioFX hardware Equalizer, Bass Boost, Virtualizer, and Loudness Enhancer with automated output device profiles for Bluetooth, Wired headphones, and Phone Speaker.</p>
                 </div>
 
-                <!-- Feature 3 -->
+                <!-- Feature 5: Sleep Timer & Synced Lyrics -->
                 <div class="feature-card">
                     <div class="feature-icon-wrapper">
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
                         </svg>
                     </div>
-                    <h3>Smooth Sleep Timer</h3>
-                    <p>Fade-out volume curve over 10 seconds with "Finish last song" option. Operates as a persistent foreground playback service even when your screen is locked.</p>
+                    <h3>Sleep Timer & Live Synced Lyrics</h3>
+                    <p>10-second gentle fade-out volume curve with "Finish last song" option. Combined with synchronized real-time scrolling lyrics view with translation and Romanized display.</p>
                 </div>
 
-                <!-- Feature 4 -->
-                <div class="feature-card">
-                    <div class="feature-icon-wrapper">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
-                        </svg>
-                    </div>
-                    <h3>Live Synced Lyrics</h3>
-                    <p>Synchronized real-time scrolling lyrics view with current line centering, translations, and romanized transliteration support.</p>
-                </div>
-
-                <!-- Feature 5 -->
-                <div class="feature-card">
-                    <div class="feature-icon-wrapper">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.22 19.57 10.57 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/>
-                        </svg>
-                    </div>
-                    <h3>6 Launcher Icon Styles</h3>
-                    <p>Switch between Default Blue, Nordic Teal, Midnight, Purple, Rose, and Onyx Black launcher icons directly from Settings or the Setup Wizard.</p>
-                </div>
-
-                <!-- Feature 6 -->
+                <!-- Feature 6: Local High-Res Library -->
                 <div class="feature-card">
                     <div class="feature-icon-wrapper">
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
                         </svg>
                     </div>
-                    <h3>Artwork & Tag Editor</h3>
-                    <p>Automatic missing album cover and artist photo downloaders from iTunes and Deezer, along with a built-in ID3 tag and metadata editor.</p>
+                    <h3>Automated ID3 & Album Art Tagger</h3>
+                    <p>Automatic missing album cover and artist photo downloaders from iTunes and Deezer, along with a built-in ID3 tag editor and gapless playback for FLAC, MP3, AAC, and WAV.</p>
                 </div>
             </div>
         </section>
@@ -703,7 +833,7 @@
                     </svg>
                     <div class="notice-content">
                         <h4>"File might be harmful" or "Unknown app" warning?</h4>
-                        <p>This is standard on Android for any app installed from outside the Google Play Store. North Music contains zero malware, zero tracking ads, and operates 100% offline. Follow the steps below to complete installation safely.</p>
+                        <p>This is standard on Android for any app installed from outside the Google Play Store. North Music contains zero malware, zero tracking ads, and is 100% open source. Follow the steps below to complete installation safely.</p>
                     </div>
                 </div>
 
@@ -713,7 +843,7 @@
                     <div class="step-item">
                         <div class="step-number">1</div>
                         <h4>Download the APK</h4>
-                        <p>Tap the <span class="badge-pill">Download APK</span> button above. When your browser (Chrome/Brave) displays <em>"File might be harmful"</em>, tap <strong>Download anyway</strong>.</p>
+                        <p>Tap the <span class="badge-pill">Download v0.2 APK</span> button above. When your browser (Chrome/Brave) displays <em>"File might be harmful"</em>, tap <strong>Download anyway</strong>.</p>
                     </div>
 
                     <!-- Step 2 -->
@@ -734,7 +864,7 @@
                     <div class="step-item">
                         <div class="step-number">4</div>
                         <h4>Grant Permissions</h4>
-                        <p>On initial launch, tap <strong>Allow</strong> when requested for <span class="badge-pill">Audio files</span> access so North Music can index your local music library.</p>
+                        <p>On initial launch, tap <strong>Allow</strong> for <span class="badge-pill">Audio files</span> access so North Music can scan your local music library.</p>
                     </div>
                 </div>
 
@@ -755,13 +885,18 @@
 
             <div class="faq-list">
                 <div class="faq-item">
-                    <h4>Why is this warning shown by Android?</h4>
-                    <p>Android displays the "Unknown apps" security prompt for all APK files installed directly from a web browser or file manager rather than the Google Play Store. It is a safeguard prompting user confirmation before sideloading an application package.</p>
+                    <h4>Is North Music still offline or online?</h4>
+                    <p>North Music is now a hybrid music player! Your local offline music library continues to work with zero internet needed, complete with equalizer, sleep timer, and folder management. When connected to the internet, you can search and stream songs directly from our 320k CDN, or download them straight into your phone storage for offline playback anytime.</p>
                 </div>
 
                 <div class="faq-item">
-                    <h4>What permissions does North Music ask for?</h4>
-                    <p>North Music only requests <strong>Read Audio Files</strong> (to scan and play your device's audio files) and <strong>Notifications</strong> (Android 13+ to show playback controls and sleep timer countdown in the notification shade).</p>
+                    <h4>Where are downloaded songs saved?</h4>
+                    <p>Downloaded songs are saved in standard MP3 format into your device's <code>Music/NorthMusic</code> directory with high-resolution album artwork and artist metadata embedded, so any audio player on your phone can recognize them.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h4>What permissions does North Music request?</h4>
+                    <p>North Music only requests <strong>Read Audio Files</strong> (to scan and play your local device library), <strong>Internet / Network State</strong> (for 320k streaming, search indexing, and downloading), and <strong>Notifications</strong> (to show playback controls and sleep timer countdown in the notification drawer).</p>
                 </div>
 
                 <div class="faq-item">
@@ -774,7 +909,7 @@
         <!-- Footer -->
         <footer>
             <div class="container">
-                <p>North Music v0.1 • Released 2026 • Designed for nocturnal audiophiles.</p>
+                <p>North Music v0.2 • Released 2026 • Designed for nocturnal audiophiles.</p>
                 <p style="margin-top: 8px;">
                     <a href="#top">Back to top ↑</a>
                 </p>

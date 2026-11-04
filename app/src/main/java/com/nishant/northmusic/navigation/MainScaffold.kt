@@ -168,17 +168,238 @@ fun MainScaffold(
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = paddingValues.calculateTopPadding())
+        ) {
+            // Edge-to-edge NavHost: Content flows fully to the bottom behind the translucent dock
+            NavHost(
+                navController = navController,
+                startDestination = initialStartDestination,
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = { slideInHorizontally(initialOffsetX = { 300 }, animationSpec = tween(220)) + fadeIn(tween(200)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -300 }, animationSpec = tween(220)) + fadeOut(tween(200)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -300 }, animationSpec = tween(220)) + fadeIn(tween(200)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { 300 }, animationSpec = tween(220)) + fadeOut(tween(200)) }
+            ) {
+                // Main Bottom Bar Screens
+                composable(Screen.Home.route) {
+                    HomeScreen(
+                        homeViewModel = homeViewModel,
+                        playerViewModel = playerViewModel,
+                        downloadsViewModel = downloadsViewModel,
+                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                        onNavigateToShortcut = { route -> navController.navigate(route) },
+                        onNavigateToNowPlaying = {
+                            navController.navigate(Screen.NowPlaying.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        isSearchActive = isSearchActive,
+                        onSearchActiveChange = { isSearchActive = it }
+                    )
+                }
+                composable(Screen.Library.route) {
+                    LibraryScreen(
+                        libraryViewModel = libraryViewModel,
+                        playerViewModel = playerViewModel
+                    )
+                }
+                composable(Screen.Downloads.route) {
+                    DownloadsScreen(
+                        downloadsViewModel = downloadsViewModel
+                    )
+                }
+
+                // Settings Hub Screen
+                composable(Screen.Settings.route) {
+                    SettingsScreen(
+                        onNavigateToAppearance = { navController.navigate(Screen.SettingsAppearance.route) },
+                        onNavigateToNowPlaying = { navController.navigate(Screen.SettingsNowPlaying.route) },
+                        onNavigateToLyrics = { navController.navigate(Screen.SettingsLyrics.route) },
+                        onNavigateToPlayback = { navController.navigate(Screen.SettingsPlayback.route) },
+                        onNavigateToLibrary = { navController.navigate(Screen.SettingsLibrary.route) },
+                        onNavigateToDownloads = { navController.navigate(Screen.SettingsDownloads.route) },
+                        onNavigateToNetwork = { navController.navigate(Screen.SettingsNetwork.route) },
+                        onNavigateToAdvanced = { navController.navigate(Screen.SettingsAdvanced.route) },
+                        onNavigateToAbout = { navController.navigate(Screen.SettingsAbout.route) }
+                    )
+                }
+
+                // 4 Home Shortcuts
+                composable(Screen.TopTracks.route) {
+                    SongListSubScreen(
+                        title = "Top tracks",
+                        songs = homeUiState.topTracks,
+                        playerViewModel = playerViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.LastAdded.route) {
+                    SongListSubScreen(
+                        title = "Last added",
+                        songs = homeUiState.lastAdded,
+                        playerViewModel = playerViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.History.route) {
+                    SongListSubScreen(
+                        title = "History",
+                        songs = homeUiState.recentlyPlayed,
+                        playerViewModel = playerViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.Favorites.route) {
+                    SongListSubScreen(
+                        title = "Favorites",
+                        songs = homeUiState.favorites,
+                        playerViewModel = playerViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                // 9 Settings Sub-screens
+                composable(Screen.SettingsAppearance.route) {
+                    AppearanceSettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.SettingsNowPlaying.route) {
+                    NowPlayingSettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.SettingsLyrics.route) {
+                    LyricsSettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.SettingsPlayback.route) {
+                    PlaybackSettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.SettingsLibrary.route) {
+                    LibrarySettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToFixMetadata = { navController.navigate(Screen.FixMetadata.route) }
+                    )
+                }
+                composable(Screen.FixMetadata.route) {
+                    FixMetadataScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.SettingsDownloads.route) {
+                    DownloadsSettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.SettingsNetwork.route) {
+                    NetworkSettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.SettingsAdvanced.route) {
+                    AdvancedSettingsScreen(
+                        settingsViewModel = settingsViewModel,
+                        onNavigateBack = { navController.popBackStack() },
+                        onRunSetupAgain = { navController.navigate(Screen.SetupWizard.route) }
+                    )
+                }
+                composable(Screen.SettingsAbout.route) {
+                    AboutSettingsScreen(
+                        onRunSetupAgain = { navController.navigate(Screen.SetupWizard.route) },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Screen.NowPlaying.route) {
+                    NowPlayingScreen(
+                        playerViewModel = playerViewModel,
+                        onDismiss = { navController.popBackStack() },
+                        onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
+                        onNavigateToAlbum = { albumName ->
+                            navController.popBackStack()
+                            navController.navigate(Screen.Library.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.ALBUMS)
+                            libraryViewModel.updateSearchQuery(albumName)
+                        },
+                        onNavigateToArtist = { artistName ->
+                            navController.popBackStack()
+                            navController.navigate(Screen.Library.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.ARTISTS)
+                            libraryViewModel.updateSearchQuery(artistName)
+                        },
+                        onNavigateToFolder = { folderName ->
+                            navController.popBackStack()
+                            navController.navigate(Screen.Library.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.FOLDERS)
+                            libraryViewModel.updateSearchQuery(folderName)
+                        }
+                    )
+                }
+                composable(Screen.Equalizer.route) {
+                    EqualizerScreen(
+                        equalizerViewModel = equalizerViewModel,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.SetupWizard.route) {
+                    SetupWizardScreen(
+                        settingsViewModel = settingsViewModel,
+                        onComplete = {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.SetupWizard.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+            }
+
+            // Floating Bottom Dock overlaying the edge-to-edge NavHost
             Column(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.45f),
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+                                Color(0x55080C14),
+                                Color(0xAA080C14),
+                                Color(0xEE080C14)
                             )
                         )
                     )
@@ -198,7 +419,7 @@ fun MainScaffold(
                     onDismiss = { isMiniPlayerDismissed = true }
                 )
 
-                // Sleek Floating Pill Bottom Navigation Bar matching MiniPlayer width & curves
+                // Sleek Full-Width Semi-Transparent Bottom Navigation Bar
                 AnimatedVisibility(
                     visible = showBottomNav,
                     enter = slideInVertically(
@@ -210,27 +431,23 @@ fun MainScaffold(
                         animationSpec = tween(durationMillis = 180)
                     ) + fadeOut(animationSpec = tween(durationMillis = 120))
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
-                        contentAlignment = Alignment.Center
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xB80B0F19), // Semi-transparent nocturnal surface (~72% opacity)
+                        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+                        tonalElevation = 0.dp
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(28.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.82f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
-                            tonalElevation = 6.dp,
-                            shadowElevation = 8.dp,
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(64.dp)
-                                    .padding(horizontal = 6.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                    .height(60.dp)
+                                    .padding(horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceAround,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 BottomNavItems.forEach { item ->
@@ -242,7 +459,7 @@ fun MainScaffold(
                                         modifier = Modifier
                                             .weight(1f)
                                             .fillMaxHeight()
-                                            .clip(RoundedCornerShape(20.dp))
+                                            .clip(RoundedCornerShape(16.dp))
                                             .clickable {
                                                 if (currentRoute != item.route) {
                                                     if (settingsState.rememberLastPage) {
@@ -260,13 +477,14 @@ fun MainScaffold(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.Center
                                     ) {
+                                        // Pill indicator behind icon for active tab
                                         Box(
                                             modifier = Modifier
+                                                .size(width = 56.dp, height = 30.dp)
                                                 .clip(PillShape)
                                                 .background(
-                                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-                                                )
-                                                .padding(horizontal = if (isSelected) 18.dp else 12.dp, vertical = 4.dp),
+                                                    if (isSelected) Color(0xFF1E293B) else Color.Transparent
+                                                ),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
@@ -274,17 +492,17 @@ fun MainScaffold(
                                                     id = if (isSelected) item.selectedIconRes else item.unselectedIconRes
                                                 ),
                                                 contentDescription = item.label,
-                                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                tint = if (isSelected) Color(0xFF3B82F6) else Color(0xFF94A3B8),
                                                 modifier = Modifier.size(20.dp)
                                             )
                                         }
                                         if (showLabel && settingsState.tabTitlesMode != "Never") {
-                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Spacer(modifier = Modifier.height(3.dp))
                                             Text(
                                                 text = item.label,
                                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                color = if (isSelected) Color(0xFF3B82F6) else Color(0xFF94A3B8),
                                                 maxLines = 1
                                             )
                                         }
@@ -294,220 +512,6 @@ fun MainScaffold(
                         }
                     }
                 }
-            }
-        }
-    ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = initialStartDestination,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding()),
-            enterTransition = { slideInHorizontally(initialOffsetX = { 300 }, animationSpec = tween(220)) + fadeIn(tween(200)) },
-            exitTransition = { slideOutHorizontally(targetOffsetX = { -300 }, animationSpec = tween(220)) + fadeOut(tween(200)) },
-            popEnterTransition = { slideInHorizontally(initialOffsetX = { -300 }, animationSpec = tween(220)) + fadeIn(tween(200)) },
-            popExitTransition = { slideOutHorizontally(targetOffsetX = { 300 }, animationSpec = tween(220)) + fadeOut(tween(200)) }
-        ) {
-            // Main Bottom Bar Screens
-            composable(Screen.Home.route) {
-                HomeScreen(
-                    homeViewModel = homeViewModel,
-                    playerViewModel = playerViewModel,
-                    downloadsViewModel = downloadsViewModel,
-                    onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                    onNavigateToShortcut = { route -> navController.navigate(route) },
-                    onNavigateToNowPlaying = {
-                        navController.navigate(Screen.NowPlaying.route) {
-                            launchSingleTop = true
-                        }
-                    },
-                    isSearchActive = isSearchActive,
-                    onSearchActiveChange = { isSearchActive = it }
-                )
-            }
-            composable(Screen.Library.route) {
-                LibraryScreen(
-                    libraryViewModel = libraryViewModel,
-                    playerViewModel = playerViewModel
-                )
-            }
-            composable(Screen.Downloads.route) {
-                DownloadsScreen(
-                    downloadsViewModel = downloadsViewModel
-                )
-            }
-
-            // Settings Hub Screen
-            composable(Screen.Settings.route) {
-                SettingsScreen(
-                    onNavigateToAppearance = { navController.navigate(Screen.SettingsAppearance.route) },
-                    onNavigateToNowPlaying = { navController.navigate(Screen.SettingsNowPlaying.route) },
-                    onNavigateToLyrics = { navController.navigate(Screen.SettingsLyrics.route) },
-                    onNavigateToPlayback = { navController.navigate(Screen.SettingsPlayback.route) },
-                    onNavigateToLibrary = { navController.navigate(Screen.SettingsLibrary.route) },
-                    onNavigateToDownloads = { navController.navigate(Screen.SettingsDownloads.route) },
-                    onNavigateToNetwork = { navController.navigate(Screen.SettingsNetwork.route) },
-                    onNavigateToAdvanced = { navController.navigate(Screen.SettingsAdvanced.route) },
-                    onNavigateToAbout = { navController.navigate(Screen.SettingsAbout.route) }
-                )
-            }
-
-            // 4 Home Shortcuts
-            composable(Screen.TopTracks.route) {
-                SongListSubScreen(
-                    title = "Top tracks",
-                    songs = homeUiState.topTracks,
-                    playerViewModel = playerViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.LastAdded.route) {
-                SongListSubScreen(
-                    title = "Last added",
-                    songs = homeUiState.lastAdded,
-                    playerViewModel = playerViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.History.route) {
-                SongListSubScreen(
-                    title = "History",
-                    songs = homeUiState.recentlyPlayed,
-                    playerViewModel = playerViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.Favorites.route) {
-                SongListSubScreen(
-                    title = "Favorites",
-                    songs = homeUiState.favorites,
-                    playerViewModel = playerViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            // 9 Settings Sub-screens
-            composable(Screen.SettingsAppearance.route) {
-                AppearanceSettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.SettingsNowPlaying.route) {
-                NowPlayingSettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.SettingsLyrics.route) {
-                LyricsSettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.SettingsPlayback.route) {
-                PlaybackSettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.SettingsLibrary.route) {
-                LibrarySettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToFixMetadata = { navController.navigate(Screen.FixMetadata.route) }
-                )
-            }
-            composable(Screen.FixMetadata.route) {
-                FixMetadataScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.SettingsDownloads.route) {
-                DownloadsSettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.SettingsNetwork.route) {
-                NetworkSettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.SettingsAdvanced.route) {
-                AdvancedSettingsScreen(
-                    settingsViewModel = settingsViewModel,
-                    onNavigateBack = { navController.popBackStack() },
-                    onRunSetupAgain = { navController.navigate(Screen.SetupWizard.route) }
-                )
-            }
-            composable(Screen.SettingsAbout.route) {
-                AboutSettingsScreen(
-                    onRunSetupAgain = { navController.navigate(Screen.SetupWizard.route) },
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(Screen.NowPlaying.route) {
-                NowPlayingScreen(
-                    playerViewModel = playerViewModel,
-                    onDismiss = { navController.popBackStack() },
-                    onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
-                    onNavigateToAlbum = { albumName ->
-                        navController.popBackStack()
-                        navController.navigate(Screen.Library.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                        libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.ALBUMS)
-                        libraryViewModel.updateSearchQuery(albumName)
-                    },
-                    onNavigateToArtist = { artistName ->
-                        navController.popBackStack()
-                        navController.navigate(Screen.Library.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                        libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.ARTISTS)
-                        libraryViewModel.updateSearchQuery(artistName)
-                    },
-                    onNavigateToFolder = { folderName ->
-                        navController.popBackStack()
-                        navController.navigate(Screen.Library.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                        libraryViewModel.selectFilter(com.nishant.northmusic.data.model.LibraryFilter.FOLDERS)
-                        libraryViewModel.updateSearchQuery(folderName)
-                    }
-                )
-            }
-            composable(Screen.Equalizer.route) {
-                EqualizerScreen(
-                    equalizerViewModel = equalizerViewModel,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-            composable(Screen.SetupWizard.route) {
-                SetupWizardScreen(
-                    settingsViewModel = settingsViewModel,
-                    onComplete = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.SetupWizard.route) { inclusive = true }
-                        }
-                    }
-                )
             }
         }
     }

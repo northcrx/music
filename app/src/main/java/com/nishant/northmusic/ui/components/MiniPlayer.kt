@@ -41,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,11 +50,10 @@ import com.nishant.northmusic.data.model.PlayerState
 
 /**
  * Floating Mini Player Pill:
- * - 28dp corner radius, 12dp horizontal margin, 8dp above bottom nav, 6dp elevation shadow.
- * - Background: primaryContainer at ~80% opacity over the surface for balanced saturation.
- * - Text and icons in onPrimaryContainer, immediately reactive to accent color changes.
- * - Play/pause: 48dp control with circular progress ring (4dp stroke) around the icon.
- * - Straight progress line removed.
+ * - 22dp corner radius, 14dp horizontal margin, levitating above bottom nav dock.
+ * - Nocturnal Semi-Transparent Glass aesthetic: Deep dark obsidian translucent background with frosted hairline border.
+ * - Solid white circular play/pause control with vibrant blue progress ring.
+ * - Crisp typography and controls (Title in white, artist in slate, favorite & skip).
  * - Gestures: Tap opens Now Playing; swipe left/right skips track; swipe down hides it.
  */
 @Composable
@@ -80,20 +78,21 @@ fun MiniPlayer(
         var totalDragX by remember { mutableFloatStateOf(0f) }
         var totalDragY by remember { mutableFloatStateOf(0f) }
 
-        val miniPlayerBackground = MaterialTheme.colorScheme.surfaceContainerHigh
-            .copy(alpha = 0.92f)
+        // Nocturnal semi-transparent dark glass background
+        val miniPlayerBackground = Color(0xDD0F172A)
+        val frostedBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
 
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+                .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
                 .shadow(
-                    elevation = 6.dp,
-                    shape = RoundedCornerShape(28.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.25f),
-                    spotColor = Color.Black.copy(alpha = 0.35f)
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(22.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.35f),
+                    spotColor = Color.Black.copy(alpha = 0.5f)
                 )
-                .clip(RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(22.dp))
                 .clickable(onClick = onTap)
                 .pointerInput(Unit) {
                     detectDragGestures(
@@ -117,10 +116,10 @@ fun MiniPlayer(
                         }
                     )
                 },
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(22.dp),
             color = miniPlayerBackground,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
-            tonalElevation = 4.dp
+            border = frostedBorder,
+            tonalElevation = 0.dp
         ) {
             Box(
                 modifier = Modifier
@@ -130,7 +129,7 @@ fun MiniPlayer(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 12.dp, end = 10.dp),
+                        .padding(start = 10.dp, end = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 44dp rounded artwork with async loading and fallback
@@ -149,9 +148,9 @@ fun MiniPlayer(
                     ) {
                         Text(
                             text = song.title,
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.5.sp),
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -159,7 +158,7 @@ fun MiniPlayer(
                         Text(
                             text = song.artist,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color(0xFF94A3B8),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -168,39 +167,44 @@ fun MiniPlayer(
                     // Favorite Button
                     IconButton(
                         onClick = onFavoriteClick,
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(38.dp)
                     ) {
                         Icon(
                             imageVector = if (playerState.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                             contentDescription = "Favorite",
-                            tint = if (playerState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = if (playerState.isFavorite) Color(0xFFFF3B5C) else Color.White.copy(alpha = 0.75f),
                             modifier = Modifier.size(22.dp)
                         )
                     }
 
-                    // Play / Pause Button with Circular Progress Ring around it
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    // Play / Pause Button with solid white circle and vibrant blue progress ring
                     ProgressRingIconButton(
                         progress = playerState.progress,
                         icon = if (playerState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = if (playerState.isPlaying) "Pause" else "Play",
                         onClick = onPlayPauseClick,
-                        size = 48.dp,
-                        iconSize = 24.dp,
-                        strokeWidth = 3.5.dp,
-                        ringColor = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                        iconTint = MaterialTheme.colorScheme.onSurface
+                        size = 44.dp,
+                        iconSize = 22.dp,
+                        strokeWidth = 3.dp,
+                        containerColor = Color.White,
+                        iconTint = Color(0xFF0F172A),
+                        ringColor = Color(0xFF3B82F6),
+                        trackColor = Color.White.copy(alpha = 0.22f)
                     )
+
+                    Spacer(modifier = Modifier.width(4.dp))
 
                     // Skip Next Button
                     IconButton(
                         onClick = onNextClick,
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(38.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.SkipNext,
                             contentDescription = "Next",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(24.dp)
                         )
                     }

@@ -36,6 +36,7 @@ fun ProgressRingIconButton(
     size: Dp = 48.dp,
     strokeWidth: Dp = 4.dp,
     iconSize: Dp = 24.dp,
+    containerColor: Color = Color.Transparent,
     contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     ringColor: Color = contentColor,
     trackColor: Color = ringColor.copy(alpha = 0.20f),
@@ -58,6 +59,15 @@ fun ProgressRingIconButton(
             val strokePx = strokeWidth.toPx()
             val radius = (this.size.minDimension - strokePx) / 2
             val center = Offset(this.size.width / 2, this.size.height / 2)
+
+            // Inner solid/translucent container background if specified
+            if (containerColor != Color.Transparent) {
+                drawCircle(
+                    color = containerColor,
+                    radius = radius,
+                    center = center
+                )
+            }
 
             // Background circular track
             drawCircle(

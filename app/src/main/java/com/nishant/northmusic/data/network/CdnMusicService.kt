@@ -1,6 +1,8 @@
 package com.nishant.northmusic.data.network
 
+import android.net.Uri
 import android.util.Base64
+import com.nishant.northmusic.data.model.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -21,7 +23,21 @@ data class OnlineTrack(
     val downloadUrl: String?,
     val bitrate: String = "320kbps",
     val source: String = "JioSaavn 320k"
-)
+) {
+    fun toSong(): Song {
+        return Song(
+            id = "online_$id",
+            title = title,
+            artist = artist,
+            album = album,
+            durationSeconds = durationSeconds,
+            filePath = downloadUrl ?: "",
+            customArtUri = if (artworkUrl.isNotBlank()) Uri.parse(artworkUrl) else null,
+            isHighQuality = true,
+            genre = "Online"
+        )
+    }
+}
 
 data class ResolvedTrackInfo(
     val title: String,
@@ -32,7 +48,21 @@ data class ResolvedTrackInfo(
     val bitrate: String = "320kbps",
     val source: String,
     val originalUrl: String
-)
+) {
+    fun toSong(): Song {
+        return Song(
+            id = "online_${System.currentTimeMillis()}",
+            title = title,
+            artist = artist,
+            album = album,
+            durationSeconds = 0,
+            filePath = downloadUrl ?: "",
+            customArtUri = if (artworkUrl.isNotBlank()) Uri.parse(artworkUrl) else null,
+            isHighQuality = true,
+            genre = "Online"
+        )
+    }
+}
 
 object CdnMusicService {
 

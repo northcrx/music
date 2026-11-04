@@ -14,6 +14,10 @@ object LyricsHelper {
     private val LRC_REGEX = Pattern.compile("""\[(\d{1,2}):(\d{1,2}(?:\.\d{1,3})?)\](.*)""")
 
     suspend fun getLyricsForSong(context: Context, song: Song): List<LyricLine> = withContext(Dispatchers.IO) {
+        if (song.filePath.startsWith("http://") || song.filePath.startsWith("https://")) {
+            return@withContext emptyList()
+        }
+
         // 1. Check for companion .lrc file next to audio file
         if (song.filePath.isNotBlank()) {
             try {

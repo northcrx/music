@@ -25,10 +25,14 @@ data class Song(
     val customArtUri: Uri? = null
 ) {
     val contentUri: Uri
-        get() = ContentUris.withAppendedId(
-            android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-            id.toLongOrNull() ?: 0L
-        )
+        get() = if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+            Uri.parse(filePath)
+        } else {
+            ContentUris.withAppendedId(
+                android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                id.toLongOrNull() ?: 0L
+            )
+        }
 
     val albumArtUri: Uri?
         get() = customArtUri ?: if (albumId > 0L) {

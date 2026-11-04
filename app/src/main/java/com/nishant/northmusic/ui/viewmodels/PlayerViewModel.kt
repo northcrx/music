@@ -394,11 +394,15 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 }
 
 private fun Song.toMediaItem(): MediaItem {
-    val file = if (filePath.isNotBlank()) File(filePath) else null
-    val targetUri = if (file != null && file.exists()) {
-        Uri.fromFile(file)
+    val targetUri = if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+        Uri.parse(filePath)
     } else {
-        contentUri
+        val file = if (filePath.isNotBlank()) File(filePath) else null
+        if (file != null && file.exists()) {
+            Uri.fromFile(file)
+        } else {
+            contentUri
+        }
     }
     val metadataBuilder = MediaMetadata.Builder()
         .setTitle(title)

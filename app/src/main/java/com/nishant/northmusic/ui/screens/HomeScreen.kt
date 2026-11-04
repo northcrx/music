@@ -7,6 +7,7 @@ import com.nishant.northmusic.ui.viewmodels.DownloadsViewModel
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import kotlinx.coroutines.delay
@@ -464,29 +465,41 @@ fun HomeScreen(
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                             Text(
-                                                text = "${resolved.artist} ? ${resolved.bitrate}",
+                                                text = "${resolved.artist} • ${resolved.bitrate}",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
-                                        FilledTonalButton(
-                                            onClick = {
-                                                downloadsViewModel?.enqueue(
-                                                    resolved.title,
-                                                    resolved.artist,
-                                                    resolved.album,
-                                                    resolved.downloadUrl,
-                                                    resolved.artworkUrl
-                                                )
-                                                onSearchActiveChange(false)
-                                                searchQuery = ""
-                                                focusManager.clearFocus()
-                                            },
-                                            shape = PillShape
-                                        ) {
-                                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Download")
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    playerViewModel.playSong(resolved.toSong(), source = "Online Stream (320k)")
+                                                },
+                                                shape = PillShape
+                                            ) {
+                                                Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Play")
+                                            }
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    downloadsViewModel?.enqueue(
+                                                        resolved.title,
+                                                        resolved.artist,
+                                                        resolved.album,
+                                                        resolved.downloadUrl,
+                                                        resolved.artworkUrl
+                                                    )
+                                                    onSearchActiveChange(false)
+                                                    searchQuery = ""
+                                                    focusManager.clearFocus()
+                                                },
+                                                shape = PillShape
+                                            ) {
+                                                Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Download")
+                                            }
                                         }
                                     }
                                 } else {
@@ -530,7 +543,7 @@ fun HomeScreen(
                     if (onlineTracks.isNotEmpty()) {
                         item {
                             Text(
-                                text = "ONLINE MUSIC (320k Audio)",
+                                text = "ONLINE MUSIC (320k Audio • Tap to stream)",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
@@ -541,12 +554,19 @@ fun HomeScreen(
                         items(onlineTracks, key = { it.id }) { track ->
                             val isDownloaded = downloadsState?.completedItems?.any { it.title.equals(track.title, ignoreCase = true) } == true
                             val isDownloading = downloadsState?.downloadingItems?.any { it.title.equals(track.title, ignoreCase = true) } == true
+                            val isCurrentPlaying = playerState.currentSong?.title.equals(track.title, ignoreCase = true)
 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        downloadsViewModel?.enqueue(track.title, track.artist, track.album, track.downloadUrl, track.artworkUrl)
+                                        // Tap on song row: Stream immediately, or play local if already downloaded
+                                        val localMatch = uiState.yourMusic.find { it.title.equals(track.title, ignoreCase = true) }
+                                        if (localMatch != null) {
+                                            playerViewModel.playSong(localMatch, source = "Downloaded")
+                                        } else {
+                                            playerViewModel.playSong(track.toSong(), source = "Online Stream (320k)")
+                                        }
                                     }
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -562,7 +582,8 @@ fun HomeScreen(
                                     Text(
                                         text = track.title,
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = if (isCurrentPlaying) FontWeight.Bold else FontWeight.SemiBold,
+                                        color = if (isCurrentPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -571,7 +592,7 @@ fun HomeScreen(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         Text(
-                                            text = "${track.artist} ? ${track.album.ifEmpty { "Single" }}",
+                                            text = "${track.artist} • ${track.album.ifEmpty { "Single" }}",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 1,

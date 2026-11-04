@@ -1,9 +1,12 @@
 package com.nishant.northmusic.navigation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -156,9 +159,10 @@ fun MainScaffold(
                     exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
                     // Navigation Bar (3 items: Home, Library, Downloads)
+                    // Seamless connection to background: surface color, 0dp tonal elevation
                     NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        tonalElevation = 4.dp
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp
                     ) {
                         BottomNavItems.forEach { screen ->
                             val selected = currentRoute == screen.route
@@ -212,7 +216,31 @@ fun MainScaffold(
             startDestination = initialStartDestination,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
+            enterTransition = {
+                fadeIn(animationSpec = tween(200)) + slideInHorizontally(
+                    animationSpec = tween(200),
+                    initialOffsetX = { (it * 0.08f).toInt() }
+                )
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(200)) + slideOutHorizontally(
+                    animationSpec = tween(200),
+                    targetOffsetX = { -(it * 0.08f).toInt() }
+                )
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(200)) + slideInHorizontally(
+                    animationSpec = tween(200),
+                    initialOffsetX = { -(it * 0.08f).toInt() }
+                )
+            },
+            popExitTransition = {
+                fadeOut(animationSpec = tween(200)) + slideOutHorizontally(
+                    animationSpec = tween(200),
+                    targetOffsetX = { (it * 0.08f).toInt() }
+                )
+            }
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(

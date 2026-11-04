@@ -114,7 +114,7 @@ data class LyricLine(
 enum class AudioOutputDevice(val label: String) {
     BLUETOOTH("Bluetooth"),
     WIRED("Wired"),
-    SPEAKER("Speaker")
+    SPEAKER("Phone speaker")
 }
 
 enum class EqualizerPreset(val label: String, val bandGains: List<Float>) {

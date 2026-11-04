@@ -27,18 +27,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddLink
+import androidx.compose.material.icons.rounded.ClearAll
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DownloadForOffline
-import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,7 +58,6 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -70,7 +76,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.nishant.northmusic.data.model.DownloadStatus
+import androidx.compose.ui.unit.sp
 import com.nishant.northmusic.ui.components.DownloadCard
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.DownloadsTab
@@ -87,6 +93,7 @@ fun DownloadsScreen(
     val clipboardManager = LocalClipboardManager.current
     var showAddUrlSheet by remember { mutableStateOf(false) }
     var urlInputText by remember { mutableStateOf("") }
+    var topMenuExpanded by remember { mutableStateOf(false) }
 
     val detectedLinks = remember(urlInputText) {
         urlInputText.lines().map { it.trim() }.filter { it.startsWith("http://") || it.startsWith("https://") }
@@ -196,13 +203,171 @@ fun DownloadsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     },
+                    actions = {
+                        Box {
+                            IconButton(
+                                onClick = { topMenuExpanded = true },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.MoreVert,
+                                    contentDescription = "Menu",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = topMenuExpanded,
+                                onDismissRequest = { topMenuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Pause all") },
+                                    onClick = {
+                                        topMenuExpanded = false
+                                        downloadsViewModel.pauseAll()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.Pause,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Resume all") },
+                                    onClick = {
+                                        topMenuExpanded = false
+                                        downloadsViewModel.resumeAll()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.PlayArrow,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Clear completed") },
+                                    onClick = {
+                                        topMenuExpanded = false
+                                        downloadsViewModel.clearCompleted()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.ClearAll,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Retry all failed") },
+                                    onClick = {
+                                        topMenuExpanded = false
+                                        downloadsViewModel.retryAllFailed()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.Refresh,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     )
                 )
             }
 
-            // Material Primary Tabs: selected = primary, unselected = onSurfaceVariant
+            // Summary card (same style as Home tiles: surfaceContainer, 24dp corners, 16dp padding)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = "${uiState.completedCount}",
+                                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 32.sp),
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "/ ${uiState.totalCount} files",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${uiState.networkSpeedText} · about 2 min left",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Toggle FilledTonalButton on the right between "Pause all" and "Resume all"
+                        val allPaused = uiState.downloadingItems.isNotEmpty() && uiState.downloadingItems.all { it.isPaused }
+                        FilledTonalButton(
+                            onClick = {
+                                if (allPaused) downloadsViewModel.resumeAll() else downloadsViewModel.pauseAll()
+                            },
+                            shape = PillShape,
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (allPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (allPaused) "Resume all" else "Pause all",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Thick 6dp rounded progress bar
+                    val overallProgress = if (uiState.totalCount > 0) {
+                        uiState.completedCount.toFloat() / uiState.totalCount.toFloat()
+                    } else 0f
+                    LinearProgressIndicator(
+                        progress = { overallProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(CircleShape),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        drawStopIndicator = {}
+                    )
+                }
+            }
+
+            // Material Primary Tabs: Active (58), Completed (142), Failed (28)
             PrimaryTabRow(
                 selectedTabIndex = uiState.selectedTab.ordinal,
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -210,7 +375,7 @@ fun DownloadsScreen(
                 divider = {}
             ) {
                 val tabs = listOf(
-                    DownloadsTab.DOWNLOADING to "Downloading (${uiState.downloadingCount})",
+                    DownloadsTab.ACTIVE to "Active (${uiState.downloadingCount})",
                     DownloadsTab.COMPLETED to "Completed (${uiState.completedCount})",
                     DownloadsTab.FAILED to "Failed (${uiState.failedCount})"
                 )
@@ -232,67 +397,7 @@ fun DownloadsScreen(
                 }
             }
 
-            // Top Summary Bar: "142 of 200 done · 38 MB/s" with thin progress line (8dp spacing), "Pause all" and "Resume all" small text buttons. No different background.
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${uiState.completedCount} of ${uiState.totalCount} done · ${uiState.networkSpeedText}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TextButton(
-                            onClick = { downloadsViewModel.pauseAll() },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "Pause all",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        TextButton(
-                            onClick = { downloadsViewModel.resumeAll() },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "Resume all",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Overall thin progress line under it (8dp spacing)
-                val overallProgress = if (uiState.totalCount > 0) {
-                    uiState.completedCount.toFloat() / uiState.totalCount.toFloat()
-                } else 0f
-                LinearProgressIndicator(
-                    progress = { overallProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(CircleShape),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    drawStopIndicator = {}
-                )
-            }
-
-            // List of flat 56dp download items with 88dp bottom contentPadding
+            // List of flat download items with 88dp bottom contentPadding
             if (uiState.currentList.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -321,7 +426,7 @@ fun DownloadsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = when (uiState.selectedTab) {
-                                DownloadsTab.DOWNLOADING -> "No active downloads"
+                                DownloadsTab.ACTIVE -> "No active downloads"
                                 DownloadsTab.COMPLETED -> "No completed downloads yet"
                                 DownloadsTab.FAILED -> "No failed downloads"
                             },

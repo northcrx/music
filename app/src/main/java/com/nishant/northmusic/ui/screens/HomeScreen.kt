@@ -1,9 +1,6 @@
 package com.nishant.northmusic.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,10 +26,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.NorthWest
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -56,11 +57,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nishant.northmusic.data.model.Album
 import com.nishant.northmusic.data.model.SampleData
 import com.nishant.northmusic.navigation.BottomListScrollPadding
+import com.nishant.northmusic.navigation.Screen
 import com.nishant.northmusic.ui.components.ArtworkPlaceholder
 import com.nishant.northmusic.ui.components.SongItem
 import com.nishant.northmusic.ui.theme.PillShape
@@ -120,61 +123,65 @@ fun HomeScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // 80% width simple neutral search bar (no accent, no mic)
+            // 80% width search bar
             Surface(
-                shape = PillShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 modifier = Modifier
                     .weight(0.80f)
-                    .height(50.dp)
+                    .height(50.dp),
+                shape = RoundedCornerShape(26.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isSearchActive) Icons.AutoMirrored.Rounded.ArrowBack else Icons.Rounded.Search,
-                        contentDescription = if (isSearchActive) "Exit search" else "Search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable(enabled = isSearchActive) {
+                    if (isSearchActive) {
+                        IconButton(
+                            onClick = {
                                 onSearchActiveChange(false)
                                 searchQuery = ""
                                 focusManager.clearFocus()
-                            }
-                    )
-
-                    Spacer(modifier = Modifier.width(10.dp))
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "Close search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
 
                     Box(modifier = Modifier.weight(1f)) {
                         if (searchQuery.isEmpty()) {
                             Text(
                                 text = "Search your music",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f)
                             )
                         }
-
                         BasicTextField(
                             value = searchQuery,
-                            onValueChange = {
-                                searchQuery = it
-                                if (!isSearchActive) onSearchActiveChange(true)
-                            },
+                            onValueChange = { searchQuery = it },
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                             modifier = Modifier
@@ -263,7 +270,7 @@ fun HomeScreen(
                     }
                 }
 
-                // If query is empty: Show Recent Searches
+                // If query is empty: Show Recent Searches list
                 if (searchQuery.isBlank()) {
                     item {
                         Row(
@@ -274,7 +281,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Recent searches",
+                                text = "Recent Searches",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -299,7 +306,7 @@ fun HomeScreen(
                                     searchQuery = term
                                     focusManager.clearFocus()
                                 }
-                                .padding(horizontal = 20.dp, vertical = 10.dp),
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -359,7 +366,7 @@ fun HomeScreen(
                             }
                         }
                     } else {
-                        items(liveSearchResults, key = { it.id }) { song ->
+                        items(liveSearchResults) { song ->
                             SongItem(
                                 song = song,
                                 isPlaying = playerState.currentSong?.id == song.id && playerState.isPlaying,
@@ -376,18 +383,68 @@ fun HomeScreen(
                 }
             }
         } else {
-            // NORMAL HOME CONTENT: Only "For you", "Listen now", and "Your music"
+            // NORMAL HOME CONTENT: Shortcuts, "For you", "Listen now", and "Your music"
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = BottomListScrollPadding),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
+                // Circular shortcut buttons (56dp circle in surfaceContainer, neutral icon, label below, 1 line)
+                item {
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        val shortcuts = listOf(
+                            Triple("Top tracks", Icons.Rounded.TrendingUp, Screen.TopTracks.route),
+                            Triple("Last added", Icons.Rounded.Schedule, Screen.LastAdded.route),
+                            Triple("History", Icons.Rounded.History, Screen.History.route),
+                            Triple("Favorites", Icons.Rounded.FavoriteBorder, Screen.Favorites.route)
+                        )
+                        items(shortcuts) { (title, icon, route) ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .width(72.dp)
+                                    .clickable { onNavigateToShortcut(route) }
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainer,
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = title,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(26.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // 1. "For you" section: a mosaic grid of rounded album artwork tiles with one accent colored tile "Shuffle your music"
                 item {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 4.dp)
                     ) {
                         Text(
                             text = "For you",
@@ -435,33 +492,34 @@ fun HomeScreen(
                                             )
                                         }
                                     }
+
                                     Column {
                                         Text(
                                             text = "Shuffle your music",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimary
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
                                             text = "Personalized mix",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                                         )
                                     }
                                 }
                             }
 
-                            // Tile 2: First album
-                            val album1 = SampleData.albums.getOrNull(0) ?: SampleData.albums.first()
-                            ForYouAlbumTile(
-                                album = album1,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(140.dp),
+                            // Tile 2: Album Starboy
+                            MosaicAlbumTile(
+                                albumTitle = "Starboy",
+                                artist = "The Weeknd ft. Daft ...",
+                                colorSeed = 0xFF0D9488,
                                 onClick = {
-                                    val song = SampleData.songs.firstOrNull { it.album == album1.title } ?: SampleData.songs.first()
-                                    playerViewModel.playSong(song)
-                                }
+                                    SampleData.songs.find { it.album == "Starboy" }?.let { playerViewModel.playSong(it) }
+                                },
+                                modifier = Modifier.weight(1f)
                             )
                         }
 
@@ -471,34 +529,32 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            val album2 = SampleData.albums.getOrNull(1) ?: SampleData.albums.first()
-                            ForYouAlbumTile(
-                                album = album2,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(140.dp),
+                            // Tile 3: Album After Hours
+                            MosaicAlbumTile(
+                                albumTitle = "After Hours",
+                                artist = "The Weeknd",
+                                colorSeed = 0xFFDC2626,
                                 onClick = {
-                                    val song = SampleData.songs.firstOrNull { it.album == album2.title } ?: SampleData.songs.first()
-                                    playerViewModel.playSong(song)
-                                }
+                                    SampleData.songs.find { it.album == "After Hours" }?.let { playerViewModel.playSong(it) }
+                                },
+                                modifier = Modifier.weight(1f)
                             )
 
-                            val album3 = SampleData.albums.getOrNull(2) ?: SampleData.albums.first()
-                            ForYouAlbumTile(
-                                album = album3,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(140.dp),
+                            // Tile 4: Album Hurry Up, We're Dreaming
+                            MosaicAlbumTile(
+                                albumTitle = "Hurry Up, We're...",
+                                artist = "M83",
+                                colorSeed = 0xFF15803D,
                                 onClick = {
-                                    val song = SampleData.songs.firstOrNull { it.album == album3.title } ?: SampleData.songs.first()
-                                    playerViewModel.playSong(song)
-                                }
+                                    SampleData.songs.find { it.album.contains("Hurry") }?.let { playerViewModel.playSong(it) }
+                                },
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
                 }
 
-                // 2. "Listen now": horizontal album carousel. Title and artist go below artwork as plain text, not clipped
+                // 2. "Listen now" section: horizontal album carousel (below artwork: title and artist)
                 item {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -506,36 +562,35 @@ fun HomeScreen(
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
                             contentPadding = PaddingValues(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            items(SampleData.albums, key = { it.id }) { album ->
+                            items(SampleData.albums) { album ->
                                 Column(
                                     modifier = Modifier
-                                        .width(136.dp)
-                                        .clip(RoundedCornerShape(18.dp))
+                                        .width(148.dp)
                                         .clickable {
-                                            val song = SampleData.songs.firstOrNull { it.album == album.title } ?: SampleData.songs.first()
-                                            playerViewModel.playSong(song)
+                                            SampleData.songs.find { it.album == album.title }?.let {
+                                                playerViewModel.playSong(it)
+                                            }
                                         }
                                 ) {
                                     ArtworkPlaceholder(
+                                        size = 148.dp,
+                                        shape = RoundedCornerShape(20.dp),
                                         colorSeed = album.colorSeed,
-                                        size = 136.dp,
-                                        shape = RoundedCornerShape(18.dp),
-                                        modifier = Modifier.size(136.dp)
+                                        iconSize = 44.dp
                                     )
-
                                     Spacer(modifier = Modifier.height(8.dp))
-
                                     Text(
                                         text = album.title,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
@@ -554,7 +609,7 @@ fun HomeScreen(
                     }
                 }
 
-                // 3. "Your music": compact song rows
+                // 3. "Your music" section: 5-8 songs using shared SongItem component
                 item {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -562,17 +617,17 @@ fun HomeScreen(
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        SampleData.songs.forEach { song ->
-                            val isCurrentSong = playerState.currentSong?.id == song.id
+                        val displaySongs = remember { SampleData.songs.take(7) }
+                        displaySongs.forEach { song ->
                             SongItem(
                                 song = song,
-                                isPlaying = isCurrentSong && playerState.isPlaying,
+                                isPlaying = playerState.currentSong?.id == song.id && playerState.isPlaying,
                                 onClick = { playerViewModel.playSong(song) },
-                                onOptionsClick = { /* TODO: Song context menu */ }
+                                onOptionsClick = { /* TODO: Song context options */ }
                             )
                         }
                     }
@@ -582,16 +637,22 @@ fun HomeScreen(
     }
 }
 
+/**
+ * Mosaic Album Tile for "For you" section
+ */
 @Composable
-private fun ForYouAlbumTile(
-    album: Album,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
+private fun MosaicAlbumTile(
+    albumTitle: String,
+    artist: String,
+    colorSeed: Long,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier
+            .height(140.dp)
             .clip(RoundedCornerShape(20.dp))
-            .clickable { onClick() },
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
@@ -602,21 +663,23 @@ private fun ForYouAlbumTile(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             ArtworkPlaceholder(
-                colorSeed = album.colorSeed,
-                size = 48.dp,
-                shape = RoundedCornerShape(12.dp)
+                size = 46.dp,
+                shape = RoundedCornerShape(12.dp),
+                colorSeed = colorSeed,
+                iconSize = 22.dp
             )
+
             Column {
                 Text(
-                    text = album.title,
+                    text = albumTitle,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = album.artist,
+                    text = artist,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

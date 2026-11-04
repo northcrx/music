@@ -10,13 +10,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 enum class DownloadsTab(val label: String) {
-    DOWNLOADING("Downloading"),
+    ACTIVE("Active"),
     COMPLETED("Completed"),
     FAILED("Failed")
 }
 
 data class DownloadsUiState(
-    val selectedTab: DownloadsTab = DownloadsTab.DOWNLOADING,
+    val selectedTab: DownloadsTab = DownloadsTab.ACTIVE,
     val downloadingItems: List<DownloadItem> = SampleData.downloadingItems,
     val completedItems: List<DownloadItem> = SampleData.completedItems,
     val failedItems: List<DownloadItem> = SampleData.failedItems,
@@ -33,7 +33,7 @@ data class DownloadsUiState(
 
     val currentList: List<DownloadItem>
         get() = when (selectedTab) {
-            DownloadsTab.DOWNLOADING -> downloadingItems
+            DownloadsTab.ACTIVE -> downloadingItems
             DownloadsTab.COMPLETED -> completedItems
             DownloadsTab.FAILED -> failedItems
         }
@@ -241,7 +241,7 @@ class DownloadsViewModel : ViewModel() {
                 progress = 0.05f,
                 totalSizeMb = 14.5f,
                 downloadedMb = 0.7f,
-                speedText = "Connecting...",
+                speedText = "1.1 MB/s",
                 status = DownloadStatus.DOWNLOADING,
                 isPaused = false,
                 isSelected = false,
@@ -252,7 +252,7 @@ class DownloadsViewModel : ViewModel() {
             current.copy(
                 downloadingItems = newItems + current.downloadingItems,
                 downloadingCount = current.downloadingCount + newItems.size,
-                selectedTab = DownloadsTab.DOWNLOADING
+                selectedTab = DownloadsTab.ACTIVE
             )
         }
         // TODO: onAddUrls(list) - dispatch download tasks to WorkManager / DownloadService

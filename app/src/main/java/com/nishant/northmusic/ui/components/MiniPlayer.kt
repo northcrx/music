@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
@@ -26,11 +25,8 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -44,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,9 +50,10 @@ import com.nishant.northmusic.data.model.PlayerState
 /**
  * Floating Mini Player Pill:
  * - 28dp corner radius, 12dp horizontal margin, 8dp above bottom nav, 6dp elevation shadow.
- * - Background: Accent-tinted container (primaryContainer blended 85% with surface).
- * - Contents: 44dp rounded artwork, bold title and muted artist with ellipsis, favorite heart,
- *   play/pause accent circle button, next button, 2dp thin bottom progress line inside the pill.
+ * - Background: primaryContainer at full strength.
+ * - Text and icons in onPrimaryContainer, immediately reactive to accent color changes.
+ * - Play/pause: 48dp control with circular progress ring (4dp stroke) around the icon.
+ * - Straight progress line removed.
  * - Gestures: Tap opens Now Playing; swipe left/right skips track; swipe down hides it.
  */
 @Composable
@@ -81,13 +77,6 @@ fun MiniPlayer(
 
         var totalDragX by remember { mutableFloatStateOf(0f) }
         var totalDragY by remember { mutableFloatStateOf(0f) }
-
-        // Blend 85% surface with 15% primaryContainer for accent-tinted container
-        val pillBackgroundColor = lerp(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.surface,
-            0.85f
-        )
 
         Surface(
             modifier = Modifier
@@ -124,27 +113,28 @@ fun MiniPlayer(
                     )
                 },
             shape = RoundedCornerShape(28.dp),
-            color = pillBackgroundColor,
+            color = MaterialTheme.colorScheme.primaryContainer,
             tonalElevation = 0.dp
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
+                    .height(64.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 10.dp, end = 8.dp),
+                        .padding(start = 12.dp, end = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // 44dp rounded artwork
                     ArtworkPlaceholder(
                         size = 44.dp,
                         shape = RoundedCornerShape(10.dp),
                         colorSeed = song.colorSeed
                     )
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Column(
                         modifier = Modifier.weight(1f),
@@ -154,23 +144,23 @@ fun MiniPlayer(
                             text = song.title,
                             style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = song.artist,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    // Favorite heart (accent tint when active)
+                    // Favorite heart
                     IconButton(
                         onClick = onFavoriteClick,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(38.dp)
                     ) {
                         Icon(
                             imageVector = if (playerState.isFavorite) {
@@ -180,60 +170,44 @@ fun MiniPlayer(
                             },
                             contentDescription = if (playerState.isFavorite) "Remove favorite" else "Favorite",
                             tint = if (playerState.isFavorite) {
-                                MaterialTheme.colorScheme.primary
+                                MaterialTheme.colorScheme.onPrimaryContainer
                             } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.65f)
                             },
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(2.dp))
-
-                    // Play / Pause button (accent filled circle)
-                    FilledIconButton(
-                        onClick = onPlayPauseClick,
-                        modifier = Modifier.size(40.dp),
-                        shape = CircleShape,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (playerState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = if (playerState.isPlaying) "Pause" else "Play",
                             modifier = Modifier.size(22.dp)
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    // Play / Pause 48dp control with circular progress ring
+                    ProgressRingIconButton(
+                        progress = playerState.progress,
+                        icon = if (playerState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        onClick = onPlayPauseClick,
+                        size = 48.dp,
+                        strokeWidth = 4.dp,
+                        iconSize = 24.dp,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.20f),
+                        contentDescription = if (playerState.isPlaying) "Pause" else "Play"
+                    )
 
                     Spacer(modifier = Modifier.width(2.dp))
 
                     // Next button
                     IconButton(
                         onClick = onNextClick,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(38.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.SkipNext,
                             contentDescription = "Next",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                 }
-
-                // Thin 2dp progress line at bottom inside the pill
-                LinearProgressIndicator(
-                    progress = { playerState.progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(2.dp)
-                        .align(Alignment.BottomCenter),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = Color.Transparent,
-                    drawStopIndicator = {}
-                )
             }
         }
     }

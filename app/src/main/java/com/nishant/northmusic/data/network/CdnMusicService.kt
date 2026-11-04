@@ -2,6 +2,7 @@ package com.nishant.northmusic.data.network
 
 import android.net.Uri
 import android.util.Base64
+import android.util.Log
 import com.nishant.northmusic.data.model.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -10,6 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.util.regex.Pattern
+import java.util.zip.GZIPInputStream
 import javax.crypto.Cipher
 import javax.crypto.spec.SecretKeySpec
 
@@ -66,6 +68,7 @@ data class ResolvedTrackInfo(
 
 object CdnMusicService {
 
+    private const val TAG = "CdnMusicService"
     private const val DES_KEY = "38346591"
     private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
@@ -113,59 +116,129 @@ object CdnMusicService {
                 .replace("_160.m4a", "_320.m4a")
                 .replace("_96.mp3", "_320.mp3")
                 .replace("_160.mp3", "_320.mp3")
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "DES Decryption error", e)
             null
         }
     }
 
     /**
      * High-speed online search querying JioSaavn CDN API for 320kbps tracks.
+     * Uses both search.getResults and autocomplete.get fallback for maximum reliability.
      */
     suspend fun searchTracks(query: String, limit: Int = 20): List<OnlineTrack> = withContext(Dispatchers.IO) {
         val cleanQuery = cleanSearchQuery(query)
         if (cleanQuery.isBlank()) return@withContext emptyList()
 
+        val tracks = mutableListOf<OnlineTrack>()
+
+        // Method 1: Primary search.getResults
         try {
             val encodedQuery = URLEncoder.encode(cleanQuery, "UTF-8")
             val endpoint = "https://www.jiosaavn.com/api.php?__call=search.getResults&_format=json&_marker=0&cc=in&p=1&n=$limit&q=$encodedQuery"
-            val jsonText = httpGet(endpoint) ?: return@withContext emptyList()
+            val jsonText = httpGet(endpoint)
 
-            val root = JSONObject(jsonText)
-            val results = root.optJSONArray("results") ?: return@withContext emptyList()
+            if (!jsonText.isNullOrBlank()) {
+                val root = JSONObject(jsonText)
+                val results = root.optJSONArray("results")
+                if (results != null && results.length() > 0) {
+                    for (i in 0 until results.length()) {
+                        val item = results.optJSONObject(i) ?: continue
+                        val encrypted = item.optString("encrypted_media_url", "")
+                        val streamUrl = decryptMediaUrl(encrypted)
 
-            val tracks = mutableListOf<OnlineTrack>()
-            for (i in 0 until results.length()) {
-                val item = results.optJSONObject(i) ?: continue
-                val encrypted = item.optString("encrypted_media_url", "")
-                val streamUrl = decryptMediaUrl(encrypted)
+                        val rawTitle = item.optString("song", item.optString("title", "Unknown Title"))
+                        val rawArtist = item.optString("singers", item.optString("primary_artists", "Unknown Artist"))
+                        val rawAlbum = item.optString("album", "")
+                        val duration = item.optString("duration", "0").toIntOrNull() ?: 0
 
-                val rawTitle = item.optString("song", item.optString("title", "Unknown Title"))
-                val rawArtist = item.optString("singers", item.optString("primary_artists", "Unknown Artist"))
-                val rawAlbum = item.optString("album", "")
-                val duration = item.optString("duration", "0").toIntOrNull() ?: 0
+                        val image = item.optString("image", "")
+                            .replace("150x150", "500x500")
+                            .replace("50x50", "500x500")
 
-                val image = item.optString("image", "")
-                    .replace("150x150", "500x500")
-                    .replace("50x50", "500x500")
-
-                tracks.add(
-                    OnlineTrack(
-                        id = item.optString("id", "jio_${System.currentTimeMillis()}_$i"),
-                        title = decodeHtml(rawTitle),
-                        artist = decodeHtml(rawArtist),
-                        album = decodeHtml(rawAlbum),
-                        durationSeconds = duration,
-                        artworkUrl = image,
-                        downloadUrl = streamUrl,
-                        bitrate = if (item.optString("320kbps", "true") == "true") "320kbps" else "160kbps",
-                        source = "JioSaavn 320k"
-                    )
-                )
+                        tracks.add(
+                            OnlineTrack(
+                                id = item.optString("id", "jio_${System.currentTimeMillis()}_$i"),
+                                title = decodeHtml(rawTitle),
+                                artist = decodeHtml(rawArtist),
+                                album = decodeHtml(rawAlbum),
+                                durationSeconds = duration,
+                                artworkUrl = image,
+                                downloadUrl = streamUrl,
+                                bitrate = if (item.optString("320kbps", "true") == "true") "320kbps" else "160kbps",
+                                source = "JioSaavn 320k"
+                            )
+                        )
+                    }
+                }
             }
-            tracks
-        } catch (_: Exception) {
-            emptyList()
+        } catch (e: Exception) {
+            Log.e(TAG, "search.getResults failed for query=$cleanQuery", e)
         }
+
+        // Method 2: Autocomplete fallback (LuckyGuy method) if search.getResults returned no items
+        if (tracks.isEmpty()) {
+            try {
+                val encodedQuery = URLEncoder.encode(cleanQuery, "UTF-8")
+                val autoEndpoint = "https://www.jiosaavn.com/api.php?__call=autocomplete.get&_format=json&_marker=0&cc=in&includeMetaTags=1&query=$encodedQuery"
+                val autoJson = httpGet(autoEndpoint)
+                if (!autoJson.isNullOrBlank()) {
+                    val root = JSONObject(autoJson)
+                    val songsObj = root.optJSONObject("songs")
+                    val songArray = songsObj?.optJSONArray("data")
+                    if (songArray != null && songArray.length() > 0) {
+                        val ids = mutableListOf<String>()
+                        val maxCount = minOf(songArray.length(), limit)
+                        for (i in 0 until maxCount) {
+                            val s = songArray.optJSONObject(i) ?: continue
+                            val id = s.optString("id", "")
+                            if (id.isNotBlank()) ids.add(id)
+                        }
+
+                        if (ids.isNotEmpty()) {
+                            val pidsParam = ids.joinToString(",")
+                            val detailUrl = "https://www.jiosaavn.com/api.php?__call=song.getDetails&cc=in&_marker=0%3F_marker%3D0&_format=json&pids=$pidsParam"
+                            val detailText = httpGet(detailUrl)
+                            if (!detailText.isNullOrBlank()) {
+                                val detailRoot = JSONObject(detailText)
+                                for (id in ids) {
+                                    val obj = detailRoot.optJSONObject(id) ?: continue
+                                    val encrypted = obj.optString("encrypted_media_url", "")
+                                    val streamUrl = decryptMediaUrl(encrypted)
+
+                                    val rawTitle = obj.optString("song", obj.optString("title", "Unknown Title"))
+                                    val rawArtist = obj.optString("singers", obj.optString("primary_artists", "Unknown Artist"))
+                                    val rawAlbum = obj.optString("album", "")
+                                    val duration = obj.optString("duration", "0").toIntOrNull() ?: 0
+
+                                    val image = obj.optString("image", "")
+                                        .replace("150x150", "500x500")
+                                        .replace("50x50", "500x500")
+
+                                    tracks.add(
+                                        OnlineTrack(
+                                            id = id,
+                                            title = decodeHtml(rawTitle),
+                                            artist = decodeHtml(rawArtist),
+                                            album = decodeHtml(rawAlbum),
+                                            durationSeconds = duration,
+                                            artworkUrl = image,
+                                            downloadUrl = streamUrl,
+                                            bitrate = if (obj.optString("320kbps", "true") == "true") "320kbps" else "160kbps",
+                                            source = "JioSaavn 320k"
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "autocomplete fallback failed for query=$cleanQuery", e)
+            }
+        }
+
+        tracks
     }
 
     /**
@@ -243,14 +316,14 @@ object CdnMusicService {
                 source = if (match != null) "YouTube + JioSaavn 320k" else "YouTube Audio",
                 originalUrl = url
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "resolveYouTubeUrl error", e)
             return null
         }
     }
 
     private suspend fun resolveSpotifyUrl(url: String): ResolvedTrackInfo? {
         try {
-            // First try oEmbed for Spotify
             val encoded = URLEncoder.encode(url, "UTF-8")
             val oembedUrl = "https://open.spotify.com/oembed?url=$encoded"
             val jsonText = httpGet(oembedUrl)
@@ -272,7 +345,6 @@ object CdnMusicService {
                 }
             }
 
-            // If oEmbed didn't provide track details, extract track ID and query title/artist via JioSaavn
             if (trackTitle.isNullOrBlank()) {
                 val matcher = SPOTIFY_REGEX.matcher(url)
                 if (matcher.find()) {
@@ -297,13 +369,14 @@ object CdnMusicService {
                     originalUrl = url
                 )
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e(TAG, "resolveSpotifyUrl error", e)
+        }
         return null
     }
 
     private suspend fun resolveJioSaavnUrl(url: String): ResolvedTrackInfo? {
         try {
-            // Search track by the link's song title slug
             val slug = url.substringAfterLast("/").substringBefore("?").replace("-", " ")
             val results = searchTracks(slug, limit = 3)
             val match = results.firstOrNull() ?: return null
@@ -318,7 +391,8 @@ object CdnMusicService {
                 source = "JioSaavn 320k",
                 originalUrl = url
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "resolveJioSaavnUrl error", e)
             return null
         }
     }
@@ -350,14 +424,27 @@ object CdnMusicService {
         return try {
             val url = URL(urlStr)
             val conn = url.openConnection() as HttpURLConnection
+            conn.instanceFollowRedirects = true
             conn.requestMethod = "GET"
             conn.setRequestProperty("User-Agent", USER_AGENT)
-            conn.connectTimeout = 10000
-            conn.readTimeout = 10000
-            if (conn.responseCode in 200..299) {
-                conn.inputStream.bufferedReader().use { it.readText() }
-            } else null
-        } catch (_: Exception) {
+            conn.setRequestProperty("Accept", "*/*")
+            conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+            conn.connectTimeout = 12000
+            conn.readTimeout = 12000
+            val code = conn.responseCode
+            if (code in 200..299) {
+                val inputStream = if ("gzip".equals(conn.contentEncoding, ignoreCase = true)) {
+                    GZIPInputStream(conn.inputStream)
+                } else {
+                    conn.inputStream
+                }
+                inputStream.bufferedReader().use { it.readText() }
+            } else {
+                Log.w(TAG, "HTTP error $code for $urlStr")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "HTTP request failed for $urlStr", e)
             null
         }
     }

@@ -191,7 +191,7 @@ fun NowPlayingScreen(
                                     onNavigateToEqualizer()
                                 },
                                 leadingIcon = {
-                                    Icon(Icons.Rounded.GraphicEq, contentDescription = null)
+                                    Icon(Icons.Rounded.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             )
                         }
@@ -307,7 +307,7 @@ fun NowPlayingScreen(
                     Icon(
                         imageVector = if (playerState.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = "Favorite",
-                        tint = if (playerState.isFavorite) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (playerState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -397,7 +397,7 @@ fun NowPlayingScreen(
                 Icon(
                     imageVector = Icons.Rounded.Shuffle,
                     contentDescription = "Shuffle",
-                    tint = if (playerState.isShuffle) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (playerState.isShuffle) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -471,7 +471,7 @@ fun NowPlayingScreen(
                 Icon(
                     imageVector = if (playerState.repeatMode == RepeatMode.ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                     contentDescription = "Repeat",
-                    tint = if (playerState.repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (playerState.repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -504,7 +504,7 @@ fun NowPlayingScreen(
                     Icon(
                         imageVector = Icons.Rounded.Lyrics,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -534,7 +534,7 @@ fun NowPlayingScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -579,8 +579,17 @@ fun NowPlayingScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Rounded.Lyrics, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text("Lyrics")
+                                Icon(
+                                    imageVector = Icons.Rounded.Lyrics,
+                                    contentDescription = null,
+                                    tint = if (selectedSheetTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Lyrics",
+                                    fontWeight = if (selectedSheetTab == 0) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selectedSheetTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     )
@@ -592,8 +601,17 @@ fun NowPlayingScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text("Up Next (${queue.size})")
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
+                                    contentDescription = null,
+                                    tint = if (selectedSheetTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Up Next (${queue.size})",
+                                    fontWeight = if (selectedSheetTab == 1) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selectedSheetTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     )
@@ -674,7 +692,7 @@ fun LyricsTabContent(
                     Icon(
                         imageVector = Icons.Rounded.Lyrics,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(36.dp)
                     )
                 }
@@ -817,7 +835,8 @@ fun UpNextTabContent(
                 Icon(
                     imageVector = Icons.Rounded.ClearAll,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Clear queue")
@@ -833,7 +852,7 @@ fun UpNextTabContent(
                 Text(
                     text = "NOW PLAYING",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
                 )

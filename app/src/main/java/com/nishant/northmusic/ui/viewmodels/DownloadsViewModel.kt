@@ -22,8 +22,10 @@ data class DownloadsUiState(
     val failedItems: List<DownloadItem> = SampleData.failedItems,
     val isSelectionMode: Boolean = false,
     val selectedItemIds: Set<String> = emptySet(),
-    val totalCount: Int = 200,
+    val downloadingCount: Int = 58,
     val completedCount: Int = 142,
+    val failedCount: Int = 28,
+    val totalCount: Int = 200,
     val networkSpeedText: String = "38 MB/s"
 ) {
     val selectedCount: Int
@@ -98,15 +100,24 @@ class DownloadsViewModel : ViewModel() {
             val currentItems = current.currentList
             val allIds = currentItems.map { it.id }.toSet()
             val areAllSelected = current.selectedItemIds.containsAll(allIds)
-            val newSelected = if (areAllSelected) emptySet() else allIds
 
-            current.copy(
-                isSelectionMode = newSelected.isNotEmpty(),
-                selectedItemIds = newSelected,
-                downloadingItems = current.downloadingItems.map { it.copy(isSelected = it.id in newSelected) },
-                completedItems = current.completedItems.map { it.copy(isSelected = it.id in newSelected) },
-                failedItems = current.failedItems.map { it.copy(isSelected = it.id in newSelected) }
-            )
+            if (areAllSelected) {
+                current.copy(
+                    isSelectionMode = false,
+                    selectedItemIds = emptySet(),
+                    downloadingItems = current.downloadingItems.map { it.copy(isSelected = false) },
+                    completedItems = current.completedItems.map { it.copy(isSelected = false) },
+                    failedItems = current.failedItems.map { it.copy(isSelected = false) }
+                )
+            } else {
+                val newSelected = current.selectedItemIds + allIds
+                current.copy(
+                    selectedItemIds = newSelected,
+                    downloadingItems = current.downloadingItems.map { it.copy(isSelected = it.id in newSelected) },
+                    completedItems = current.completedItems.map { it.copy(isSelected = it.id in newSelected) },
+                    failedItems = current.failedItems.map { it.copy(isSelected = it.id in newSelected) }
+                )
+            }
         }
     }
 
@@ -124,13 +135,14 @@ class DownloadsViewModel : ViewModel() {
 
     fun togglePauseResume(itemId: String) {
         _uiState.update { current ->
-            current.copy(
-                downloadingItems = current.downloadingItems.map {
-                    if (it.id == itemId) it.copy(isPaused = !it.isPaused) else it
-                }
-            )
+            val updatedDownloading = current.downloadingItems.map { item ->
+                if (item.id == itemId) {
+                    item.copy(isPaused = !item.isPaused)
+                } else item
+            }
+            current.copy(downloadingItems = updatedDownloading)
         }
-        // TODO: Pause or resume download task in DownloadManager
+        // TODO: Signal download worker to pause/resume
     }
 
     fun pauseAll() {
@@ -190,7 +202,12 @@ class DownloadsViewModel : ViewModel() {
     }
 
     fun clearCompleted() {
-        _uiState.update { it.copy(completedItems = emptyList()) }
+        _uiState.update { current ->
+            current.copy(
+                completedItems = emptyList(),
+                completedCount = 0
+            )
+        }
         // TODO: Clear completed records from history
     }
 
@@ -206,7 +223,8 @@ class DownloadsViewModel : ViewModel() {
             }
             current.copy(
                 failedItems = emptyList(),
-                downloadingItems = current.downloadingItems + recovered
+                downloadingItems = current.downloadingItems + recovered,
+                failedCount = 0
             )
         }
         // TODO: Re-enqueue all failed download jobs
@@ -233,6 +251,7 @@ class DownloadsViewModel : ViewModel() {
         _uiState.update { current ->
             current.copy(
                 downloadingItems = newItems + current.downloadingItems,
+                downloadingCount = current.downloadingCount + newItems.size,
                 selectedTab = DownloadsTab.DOWNLOADING
             )
         }

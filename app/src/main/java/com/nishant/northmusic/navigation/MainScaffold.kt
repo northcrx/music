@@ -23,6 +23,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,7 +66,7 @@ import com.nishant.northmusic.ui.viewmodels.LibraryViewModel
 import com.nishant.northmusic.ui.viewmodels.PlayerViewModel
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
 
-val BottomListScrollPadding = 16.dp
+val BottomListScrollPadding = 88.dp
 
 @Composable
 fun MainScaffold(
@@ -88,6 +89,12 @@ fun MainScaffold(
     val coroutineScope = rememberCoroutineScope()
 
     var isSearchActive by remember { mutableStateOf(false) }
+    var isMiniPlayerDismissed by remember { mutableStateOf(false) }
+
+    // Reset dismissal when new song begins playing
+    LaunchedEffect(playerState.currentSong?.id) {
+        isMiniPlayerDismissed = false
+    }
 
     val isFullScreenRoute = currentRoute == Screen.NowPlaying.route ||
             currentRoute == Screen.Equalizer.route ||
@@ -107,8 +114,8 @@ fun MainScaffold(
             currentRoute == Screen.History.route ||
             currentRoute == Screen.Favorites.route
 
-    // Mini-player is hidden during selection mode on Downloads screen, when full screen is open, or when search is active
-    val isMiniPlayerVisible = !isFullScreenRoute && !downloadsUiState.isSelectionMode && !isSearchActive
+    // Mini-player is hidden during selection mode, full-screen route, active search, or when dismissed via swipe down
+    val isMiniPlayerVisible = !isFullScreenRoute && !downloadsUiState.isSelectionMode && !isSearchActive && !isMiniPlayerDismissed
     val showBottomNav = !isFullScreenRoute && !isSearchActive
 
     val initialStartDestination = if (!settingsState.setupDone) {
@@ -139,7 +146,8 @@ fun MainScaffold(
                     },
                     onPlayPauseClick = { playerViewModel.togglePlayPause() },
                     onFavoriteClick = { playerViewModel.toggleFavorite() },
-                    onNextClick = { playerViewModel.skipNext() }
+                    onNextClick = { playerViewModel.skipNext() },
+                    onDismiss = { isMiniPlayerDismissed = true }
                 )
 
                 AnimatedVisibility(

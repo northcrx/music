@@ -1,5 +1,10 @@
 package com.nishant.northmusic.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,21 +30,16 @@ import androidx.compose.material.icons.rounded.AddLink
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.DownloadForOffline
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -50,12 +51,15 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,7 +71,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nishant.northmusic.data.model.DownloadStatus
-import com.nishant.northmusic.navigation.BottomListScrollPadding
 import com.nishant.northmusic.ui.components.DownloadCard
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.DownloadsTab
@@ -87,6 +90,23 @@ fun DownloadsScreen(
 
     val detectedLinks = remember(urlInputText) {
         urlInputText.lines().map { it.trim() }.filter { it.startsWith("http://") || it.startsWith("https://") }
+    }
+
+    val listState = rememberLazyListState()
+    var isScrollingDown by remember { mutableStateOf(false) }
+    var lastFirstVisibleItemIndex by remember { mutableIntStateOf(0) }
+    var lastFirstVisibleItemScrollOffset by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        val currentIndex = listState.firstVisibleItemIndex
+        val currentOffset = listState.firstVisibleItemScrollOffset
+        if (currentIndex > lastFirstVisibleItemIndex || (currentIndex == lastFirstVisibleItemIndex && currentOffset > lastFirstVisibleItemScrollOffset + 10)) {
+            isScrollingDown = true
+        } else if (currentIndex < lastFirstVisibleItemIndex || (currentIndex == lastFirstVisibleItemIndex && currentOffset < lastFirstVisibleItemScrollOffset - 10)) {
+            isScrollingDown = false
+        }
+        lastFirstVisibleItemIndex = currentIndex
+        lastFirstVisibleItemScrollOffset = currentOffset
     }
 
     Box(
@@ -182,132 +202,97 @@ fun DownloadsScreen(
                 )
             }
 
-            // Material Primary Tabs (Equal Width, One Line, Counts)
+            // Material Primary Tabs: selected = primary, unselected = onSurfaceVariant
             PrimaryTabRow(
                 selectedTabIndex = uiState.selectedTab.ordinal,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {}
             ) {
-                Tab(
-                    selected = uiState.selectedTab == DownloadsTab.DOWNLOADING,
-                    onClick = { downloadsViewModel.onTabSelected(DownloadsTab.DOWNLOADING) },
-                    text = {
-                        Text(
-                            text = "Downloading (${uiState.downloadingItems.size})",
-                            maxLines = 1,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
+                val tabs = listOf(
+                    DownloadsTab.DOWNLOADING to "Downloading (${uiState.downloadingCount})",
+                    DownloadsTab.COMPLETED to "Completed (${uiState.completedCount})",
+                    DownloadsTab.FAILED to "Failed (${uiState.failedCount})"
                 )
-                Tab(
-                    selected = uiState.selectedTab == DownloadsTab.COMPLETED,
-                    onClick = { downloadsViewModel.onTabSelected(DownloadsTab.COMPLETED) },
-                    text = {
-                        Text(
-                            text = "Completed (${uiState.completedItems.size})",
-                            maxLines = 1,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                )
-                Tab(
-                    selected = uiState.selectedTab == DownloadsTab.FAILED,
-                    onClick = { downloadsViewModel.onTabSelected(DownloadsTab.FAILED) },
-                    text = {
-                        Text(
-                            text = "Failed (${uiState.failedItems.size})",
-                            maxLines = 1,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                )
-            }
-
-            // Top Summary Bar: "142 of 200 done · 38 MB/s" with one overall progress line and control buttons
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "${uiState.completedCount} of ${uiState.totalCount} done • ${uiState.networkSpeedText}",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        // Action Buttons based on context
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            when (uiState.selectedTab) {
-                                DownloadsTab.DOWNLOADING -> {
-                                    OutlinedButton(
-                                        onClick = { downloadsViewModel.pauseAll() },
-                                        shape = PillShape,
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Text("Pause all", style = MaterialTheme.typography.labelSmall)
-                                    }
-                                    FilledTonalButton(
-                                        onClick = { downloadsViewModel.resumeAll() },
-                                        shape = PillShape,
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Text("Resume all", style = MaterialTheme.typography.labelSmall)
-                                    }
-                                }
-                                DownloadsTab.COMPLETED -> {
-                                    OutlinedButton(
-                                        onClick = { downloadsViewModel.clearCompleted() },
-                                        shape = PillShape,
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Text("Clear completed", style = MaterialTheme.typography.labelSmall)
-                                    }
-                                }
-                                DownloadsTab.FAILED -> {
-                                    FilledTonalButton(
-                                        onClick = { downloadsViewModel.retryAllFailed() },
-                                        shape = PillShape,
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Text("Retry all failed", style = MaterialTheme.typography.labelSmall)
-                                    }
-                                }
-                            }
+                tabs.forEach { (tab, title) ->
+                    val selected = uiState.selectedTab == tab
+                    Tab(
+                        selected = selected,
+                        onClick = { downloadsViewModel.onTabSelected(tab) },
+                        text = {
+                            Text(
+                                text = title,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Overall 4dp Progress Bar
-                    val overallProgress = uiState.completedCount.toFloat() / uiState.totalCount.toFloat()
-                    LinearProgressIndicator(
-                        progress = { overallProgress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(CircleShape),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        drawStopIndicator = {}
                     )
                 }
             }
 
-            // List of flat 56dp download items (Performance optimized for 100-200 items)
+            // Top Summary Bar: "142 of 200 done · 38 MB/s" with thin progress line (8dp spacing), "Pause all" and "Resume all" small text buttons. No different background.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${uiState.completedCount} of ${uiState.totalCount} done · ${uiState.networkSpeedText}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(
+                            onClick = { downloadsViewModel.pauseAll() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Pause all",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        TextButton(
+                            onClick = { downloadsViewModel.resumeAll() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Resume all",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Overall thin progress line under it (8dp spacing)
+                val overallProgress = if (uiState.totalCount > 0) {
+                    uiState.completedCount.toFloat() / uiState.totalCount.toFloat()
+                } else 0f
+                LinearProgressIndicator(
+                    progress = { overallProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(CircleShape),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    drawStopIndicator = {}
+                )
+            }
+
+            // List of flat 56dp download items with 88dp bottom contentPadding
             if (uiState.currentList.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -328,7 +313,7 @@ fun DownloadsScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.DownloadForOffline,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -346,7 +331,7 @@ fun DownloadsScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Tap 'Add URL' below to download audio streams directly.",
+                            text = "Tap the link button below to download audio streams directly.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -355,8 +340,9 @@ fun DownloadsScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = BottomListScrollPadding + 72.dp)
+                    contentPadding = PaddingValues(bottom = 88.dp)
                 ) {
                     items(
                         items = uiState.currentList,
@@ -389,25 +375,27 @@ fun DownloadsScreen(
             }
         }
 
-        // ADD URL BUTTON: ExtendedFloatingActionButton above mini-player and bottom bar
-        if (!uiState.isSelectionMode) {
-            ExtendedFloatingActionButton(
+        // ADD URL BUTTON: Regular FloatingActionButton (link icon) bottom right, 16dp above mini player, hides when scrolling down
+        AnimatedVisibility(
+            visible = !uiState.isSelectionMode && !isScrollingDown,
+            enter = scaleIn() + fadeIn(),
+            exit = scaleOut() + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp)
+        ) {
+            FloatingActionButton(
                 onClick = { showAddUrlSheet = true },
-                icon = {
-                    Icon(
-                        imageVector = Icons.Rounded.AddLink,
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp)
-                    )
-                },
-                text = { Text("Add URL") },
-                shape = PillShape,
+                shape = CircleShape,
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = BottomListScrollPadding + 8.dp)
-            )
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.AddLink,
+                    contentDescription = "Add URL",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 
@@ -453,88 +441,77 @@ fun DownloadsScreen(
                         Icon(
                             imageVector = Icons.Rounded.ContentPaste,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Paste from clipboard", style = MaterialTheme.typography.labelSmall)
+                        Text("Paste", style = MaterialTheme.typography.labelSmall)
                     }
                 }
 
-                // Multi-line Text Field (one link per line)
+                Text(
+                    text = "Save directory: $saveFolder",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 OutlinedTextField(
                     value = urlInputText,
                     onValueChange = { urlInputText = it },
-                    placeholder = {
-                        Text(
-                            text = "https://example.com/audio1.mp3\nhttps://example.com/stream2.flac",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
+                    label = { Text("Paste audio URLs (one per line)") },
+                    placeholder = { Text("https://example.com/audio.mp3\nhttps://audio.cdn/track.flac") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(130.dp),
-                    shape = RoundedCornerShape(16.dp)
+                        .height(140.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    maxLines = 5
                 )
 
-                // Live status line: "N links detected"
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                if (detectedLinks.isNotEmpty()) {
                     Text(
-                        text = "${detectedLinks.size} links detected",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (detectedLinks.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Detected ${detectedLinks.size} valid link${if (detectedLinks.size > 1) "s" else ""}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
-
-                    // Save folder text
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Folder,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = saveFolder.substringAfterLast("/"),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
 
-                // Add to Queue Button
-                Button(
-                    onClick = {
-                        if (detectedLinks.isNotEmpty()) {
-                            downloadsViewModel.addUrls(detectedLinks)
-                            urlInputText = ""
-                            showAddUrlSheet = false
-                        }
-                    },
-                    enabled = detectedLinks.isNotEmpty(),
-                    shape = PillShape,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add to queue (${detectedLinks.size})", style = MaterialTheme.typography.labelLarge)
+                    OutlinedButton(
+                        onClick = { showAddUrlSheet = false },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = PillShape
+                    ) {
+                        Text("Cancel")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (detectedLinks.isNotEmpty()) {
+                                downloadsViewModel.addUrls(detectedLinks)
+                                urlInputText = ""
+                                showAddUrlSheet = false
+                            }
+                        },
+                        enabled = detectedLinks.isNotEmpty(),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = PillShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Start Download")
+                    }
                 }
             }
         }

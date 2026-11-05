@@ -13,12 +13,18 @@ import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.nishant.northmusic.MainActivity
 import com.nishant.northmusic.NorthMusicApp
 import com.nishant.northmusic.R
@@ -30,6 +36,11 @@ import kotlinx.coroutines.cancel
 
 @UnstableApi
 class PlaybackService : MediaSessionService() {
+
+    companion object {
+        var activePlayer: ExoPlayer? = null
+            private set
+    }
 
     private var player: ExoPlayer? = null
     private var mediaSession: MediaSession? = null
@@ -59,12 +70,23 @@ class PlaybackService : MediaSessionService() {
             .setUsage(C.USAGE_MEDIA)
             .build()
 
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(20000)
+
+        val dataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+
         val exoPlayer = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(mediaSourceFactory)
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
             .build()
 
         player = exoPlayer
+        activePlayer = exoPlayer
 
         // 4. Session Activity PendingIntent
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -77,8 +99,31 @@ class PlaybackService : MediaSessionService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val sessionCallback = object : MediaSession.Callback {
+            override fun onAddMediaItems(
+                mediaSession: MediaSession,
+                controller: MediaSession.ControllerInfo,
+                mediaItems: List<MediaItem>
+            ): ListenableFuture<List<MediaItem>> {
+                val resolved = mediaItems.map { item ->
+                    if (item.localConfiguration?.uri != null) {
+                        item
+                    } else {
+                        val uri = item.requestMetadata.mediaUri
+                        if (uri != null) {
+                            item.buildUpon().setUri(uri).build()
+                        } else {
+                            item
+                        }
+                    }
+                }
+                return Futures.immediateFuture(resolved)
+            }
+        }
+
         mediaSession = MediaSession.Builder(this, exoPlayer)
             .setSessionActivity(sessionActivity)
+            .setCallback(sessionCallback)
             .build()
 
         // 5. Connect AudioFxManager (Hardware Equalizer, BassBoost, Virtualizer, LoudnessEnhancer)
@@ -175,6 +220,7 @@ class PlaybackService : MediaSessionService() {
             mediaSession = null
         }
         player = null
+        activePlayer = null
         super.onDestroy()
     }
 }

@@ -14,14 +14,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.rounded.CloudDownload
-import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.FolderSpecial
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lyrics
@@ -34,6 +35,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -57,6 +59,7 @@ import com.nishant.northmusic.util.FeatureFlags
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    onNavigateBack: () -> Unit = {},
     onNavigateToAppearance: () -> Unit,
     onNavigateToNowPlaying: () -> Unit,
     onNavigateToLyrics: () -> Unit,
@@ -102,6 +105,18 @@ fun SettingsScreen(
                     )
                 }
             },
+            navigationIcon = {
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.surface
             )
@@ -115,7 +130,7 @@ fun SettingsScreen(
             // Group 1: Preferences & Playback
             item {
                 Text(
-                    text = "PLAYBACK & INTERFACE",
+                    text = "PREFERENCES & PLAYBACK",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -130,7 +145,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         SettingsGroupRow(
                             title = "Appearance",
-                            summary = "Accent colors, dynamic wallpaper palette & theme mode",
+                            summary = "Dark theme, dynamic colors & visual accent",
                             icon = Icons.Rounded.Palette,
                             onClick = onNavigateToAppearance
                         )
@@ -139,9 +154,9 @@ fun SettingsScreen(
                             modifier = Modifier.padding(start = 68.dp)
                         )
                         SettingsGroupRow(
-                            title = "Now playing",
-                            summary = "Seek bar style, player controls animation & mini player",
-                            icon = Icons.Rounded.GraphicEq,
+                            title = "Now Playing",
+                            summary = "Progress bars, track details & gestures",
+                            icon = Icons.Rounded.Tune,
                             onClick = onNavigateToNowPlaying
                         )
                         HorizontalDivider(
@@ -150,7 +165,7 @@ fun SettingsScreen(
                         )
                         SettingsGroupRow(
                             title = "Lyrics",
-                            summary = "Translation, transliteration, font size & alignment",
+                            summary = "Synced lyrics display, sources & typography",
                             icon = Icons.Rounded.Lyrics,
                             onClick = onNavigateToLyrics
                         )
@@ -159,23 +174,19 @@ fun SettingsScreen(
                             modifier = Modifier.padding(start = 68.dp)
                         )
                         SettingsGroupRow(
-                            title = "Playback",
-                            summary = if (FeatureFlags.SHOW_EQUALIZER) {
-                                "Equalizer, gapless transition, normalization & devices"
-                            } else {
-                                "Gapless transition, normalization & devices"
-                            },
-                            icon = Icons.Rounded.Tune,
+                            title = "Audio & Playback",
+                            summary = "Equalizer, sound profile, volume boost & gapless",
+                            icon = Icons.Rounded.GraphicEq,
                             onClick = onNavigateToPlayback
                         )
                     }
                 }
             }
 
-            // Group 2: Library & Media
+            // Group 2: Library & Content
             item {
                 Text(
-                    text = "MEDIA & STORAGE",
+                    text = "LIBRARY & STORAGE",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -189,35 +200,21 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         SettingsGroupRow(
-                            title = "Library",
-                            summary = "Categories, duration filter, scan folders & metadata repair",
-                            icon = Icons.Rounded.FolderSpecial,
+                            title = "Library & Scan",
+                            summary = "Storage folders, scan paths, metadata tags & filters",
+                            icon = Icons.Rounded.Folder,
                             onClick = onNavigateToLibrary
                         )
-                        if (FeatureFlags.SHOW_DOWNLOADS) {
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                                modifier = Modifier.padding(start = 68.dp)
-                            )
-                            SettingsGroupRow(
-                                title = "Downloads",
-                                summary = "Save folder, Wi-Fi only, parallel slots & naming pattern",
-                                icon = Icons.Rounded.DownloadDone,
-                                onClick = onNavigateToDownloads
-                            )
-                        }
-                        if (FeatureFlags.SHOW_NETWORK_SETTINGS) {
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                                modifier = Modifier.padding(start = 68.dp)
-                            )
-                            SettingsGroupRow(
-                                title = "Network",
-                                summary = "Online metadata lookup & lyrics search providers",
-                                icon = Icons.Rounded.CloudDownload,
-                                onClick = onNavigateToNetwork
-                            )
-                        }
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 68.dp)
+                        )
+                        SettingsGroupRow(
+                            title = "Downloads & Network",
+                            summary = "Audio streaming quality, offline cache & Wi-Fi only",
+                            icon = Icons.Rounded.CloudDownload,
+                            onClick = onNavigateToDownloads
+                        )
                     }
                 }
             }

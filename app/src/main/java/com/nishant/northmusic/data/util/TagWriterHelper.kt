@@ -147,4 +147,49 @@ object TagWriterHelper {
             Result.failure(Exception(t.message ?: "Failed accessing audio file", t))
         }
     }
+
+    suspend fun writeDirectTagsToFile(
+        file: File,
+        title: String,
+        artist: String,
+        album: String = "",
+        genre: String = "",
+        comment: String = "",
+        artworkFile: File? = null
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            try {
+                TagOptionSingleton.getInstance().isAndroid = true
+            } catch (_: Throwable) {}
+
+            val audioFile = AudioFileIO.read(file)
+            val tag = audioFile.tagOrCreateAndSetDefault
+
+            if (title.isNotBlank()) tag.setField(FieldKey.TITLE, title.trim())
+            if (artist.isNotBlank()) tag.setField(FieldKey.ARTIST, artist.trim())
+            if (album.isNotBlank()) tag.setField(FieldKey.ALBUM, album.trim())
+            if (genre.isNotBlank()) tag.setField(FieldKey.GENRE, genre.trim())
+            if (comment.isNotBlank()) tag.setField(FieldKey.COMMENT, comment.trim())
+
+            if (artworkFile != null && artworkFile.exists() && artworkFile.length() > 0) {
+                try {
+                    val artwork = AndroidArtwork().apply {
+                        setFromFile(artworkFile)
+                    }
+                    try {
+                        tag.deleteArtworkField()
+                    } catch (_: Throwable) {}
+                    tag.setField(artwork)
+                } catch (t: Throwable) {
+                    t.printStackTrace()
+                }
+            }
+
+            audioFile.commit()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 }

@@ -24,6 +24,7 @@ data class LibraryUiState(
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
     val isSortAscending: Boolean = true,
+    val categoryFilter: String? = null,
     val songs: List<Song> = emptyList(),
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
@@ -85,11 +86,22 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
                 val query = _uiState.value.searchQuery.trim().normalizeForSearch()
                 val isAsc = _uiState.value.isSortAscending
+                val catFilter = _uiState.value.categoryFilter?.lowercase()
 
-                val filteredSongs = if (query.isBlank()) {
+                val categorySongs = if (catFilter.isNullOrBlank()) {
                     songs
                 } else {
                     songs.filter {
+                        it.filePath.lowercase().contains("/$catFilter/") ||
+                                it.genre.lowercase() == catFilter ||
+                                it.relativeFolder.lowercase().contains(catFilter)
+                    }
+                }
+
+                val filteredSongs = if (query.isBlank()) {
+                    categorySongs
+                } else {
+                    categorySongs.filter {
                         it.title.normalizeForSearch().contains(query) ||
                                 it.artist.normalizeForSearch().contains(query) ||
                                 it.album.normalizeForSearch().contains(query)
@@ -144,6 +156,15 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     fun selectFilter(filter: LibraryFilter) = onFilterSelected(filter)
 
+    fun setCategoryFilter(category: String?) {
+        _uiState.update { it.copy(categoryFilter = category) }
+        reapplyFilterAndSort()
+    }
+
+    fun clearCategoryFilter() {
+        setCategoryFilter(null)
+    }
+
     fun onSearchQueryChange(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
         reapplyFilterAndSort()
@@ -183,11 +204,22 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
         val query = _uiState.value.searchQuery.trim().normalizeForSearch()
         val isAsc = _uiState.value.isSortAscending
+        val catFilter = _uiState.value.categoryFilter?.lowercase()
 
-        val filteredSongs = if (query.isBlank()) {
+        val categorySongs = if (catFilter.isNullOrBlank()) {
             allSongs
         } else {
             allSongs.filter {
+                it.filePath.lowercase().contains("/$catFilter/") ||
+                        it.genre.lowercase() == catFilter ||
+                        it.relativeFolder.lowercase().contains(catFilter)
+            }
+        }
+
+        val filteredSongs = if (query.isBlank()) {
+            categorySongs
+        } else {
+            categorySongs.filter {
                 it.title.normalizeForSearch().contains(query) ||
                         it.artist.normalizeForSearch().contains(query) ||
                         it.album.normalizeForSearch().contains(query)

@@ -70,6 +70,10 @@ sealed class Screen(
         route = "settings_appearance",
         title = "Appearance"
     )
+    data object SettingsHomeSections : Screen(
+        route = "settings_home_sections",
+        title = "Home sections"
+    )
     data object SettingsNowPlaying : Screen(
         route = "settings_now_playing",
         title = "Now playing"
@@ -90,9 +94,17 @@ sealed class Screen(
         route = "settings_downloads",
         title = "Downloads"
     )
+    data object CategoryRules : Screen(
+        route = "category_rules",
+        title = "Category rules"
+    )
     data object SettingsNetwork : Screen(
         route = "settings_network",
         title = "Network"
+    )
+    data object SettingsPermissionsSetup : Screen(
+        route = "settings_permissions_setup",
+        title = "Permissions & setup"
     )
     data object SettingsAdvanced : Screen(
         route = "settings_advanced",

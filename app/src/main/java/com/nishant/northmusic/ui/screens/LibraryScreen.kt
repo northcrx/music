@@ -1,5 +1,7 @@
 package com.nishant.northmusic.ui.screens
 
+import androidx.compose.material.icons.rounded.AutoFixHigh
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.rounded.AudioFile
@@ -20,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +54,10 @@ import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
@@ -143,6 +150,9 @@ import kotlin.math.abs
 fun LibraryScreen(
     libraryViewModel: LibraryViewModel,
     playerViewModel: PlayerViewModel,
+    onNavigateToFixMetadata: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToDownloads: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by libraryViewModel.uiState.collectAsState()
@@ -346,10 +356,26 @@ fun LibraryScreen(
             modifier = modifier
         )
     } else {
+        var totalDragX by remember { mutableStateOf(0f) }
         Column(
             modifier = modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface)
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { totalDragX = 0f },
+                        onDragEnd = {
+                            if (totalDragX > 70f) {
+                                onNavigateToHome()
+                            } else if (totalDragX < -70f) {
+                                onNavigateToDownloads()
+                            }
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            totalDragX += dragAmount
+                        }
+                    )
+                }
         ) {
         // Sticky Top App Bar
         TopAppBar(
@@ -483,6 +509,49 @@ fun LibraryScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
+        if (uiState.categoryFilter != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = PillShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.clickable { libraryViewModel.clearCategoryFilter() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Category: ${uiState.categoryFilter}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Icon(
+                            imageVector = Icons.Rounded.Clear,
+                            contentDescription = "Clear",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                TextButton(onClick = { libraryViewModel.clearCategoryFilter() }) {
+                    Text(
+                        text = "Show all",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
         // Content Area by Selected Tab
         when (uiState.selectedFilter) {
             LibraryFilter.SONGS -> {
@@ -507,6 +576,7 @@ fun LibraryScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(top = 4.dp, bottom = BottomListScrollPadding)
                         ) {
+
                             items(sortedSongs, key = { it.id }) { song ->
                                 val isCurrentSong = playerState.currentSong?.id == song.id
                                 val isPlaying = isCurrentSong && playerState.isPlaying
@@ -703,6 +773,72 @@ fun LibraryScreen(
                     }
                 )
             }
+
+            LibraryFilter.DOWNLOADED -> {
+                val downloaded = remember(sortedSongs) {
+                    sortedSongs.filter {
+                        it.filePath.contains("NorthMusic", ignoreCase = true) ||
+                        it.filePath.contains("Download", ignoreCase = true)
+                    }
+                }
+                if (downloaded.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Download,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Text(
+                                    text = "No downloaded tracks",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Songs downloaded from online search or links will appear here organized in your folder structure.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 4.dp, bottom = BottomListScrollPadding)
+                    ) {
+                        items(downloaded, key = { it.id }) { song ->
+                            val isCurrentSong = playerState.currentSong?.id == song.id
+                            val isPlaying = isCurrentSong && playerState.isPlaying
+
+                            SongItem(
+                                song = song,
+                                isPlaying = isPlaying,
+                                onClick = { playerViewModel.playSong(song, downloaded, source = "Downloaded") },
+                                onOptionsClick = { },
+                                onEditTags = { songToEditTags = song }
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -713,7 +849,8 @@ fun LibraryScreen(
             onDismiss = {
                 songToEditTags = null
                 libraryViewModel.scanMusic()
-            }
+            },
+            playerViewModel = playerViewModel
         )
     }
 

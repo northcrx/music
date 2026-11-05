@@ -241,16 +241,11 @@ fun SettingsSliderRow(
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Slider(
+        AppSlider(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
             steps = steps,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-            ),
             modifier = Modifier.fillMaxWidth()
         )
     }

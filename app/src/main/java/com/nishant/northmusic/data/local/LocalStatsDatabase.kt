@@ -144,6 +144,19 @@ class LocalStatsDatabase private constructor(context: Context) :
             )
             """.trimIndent()
         )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS artist_category (
+                normalized_artist TEXT PRIMARY KEY,
+                category TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        db.execSQL("CREATE TABLE IF NOT EXISTS artist_category (normalized_artist TEXT PRIMARY KEY, category TEXT NOT NULL)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -155,6 +168,9 @@ class LocalStatsDatabase private constructor(context: Context) :
         if (oldVersion < 3) {
             db.execSQL("CREATE TABLE IF NOT EXISTS user_playlists (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at INTEGER NOT NULL)")
             db.execSQL("CREATE TABLE IF NOT EXISTS playlist_songs (playlist_id TEXT NOT NULL, song_id TEXT NOT NULL, added_at INTEGER NOT NULL, PRIMARY KEY (playlist_id, song_id))")
+        }
+        if (oldVersion < 4) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS artist_category (normalized_artist TEXT PRIMARY KEY, category TEXT NOT NULL)")
         }
     }
 
@@ -595,9 +611,64 @@ class LocalStatsDatabase private constructor(context: Context) :
         loadUserPlaylists()
     }
 
+    suspend fun getArtistCategory(normalizedArtist: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val cursor = readableDatabase.query(
+                "artist_category",
+                arrayOf("category"),
+                "normalized_artist = ?",
+                arrayOf(normalizedArtist),
+                null,
+                null,
+                null
+            )
+            cursor.use {
+                if (it.moveToFirst()) it.getString(0) else null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    suspend fun setArtistCategory(normalizedArtist: String, category: String) = withContext(Dispatchers.IO) {
+        try {
+            val values = ContentValues().apply {
+                put("normalized_artist", normalizedArtist)
+                put("category", category)
+            }
+            writableDatabase.insertWithOnConflict(
+                "artist_category",
+                null,
+                values,
+                SQLiteDatabase.CONFLICT_REPLACE
+            )
+        } catch (_: Exception) {}
+    }
+
+    suspend fun getAllArtistCategories(): Map<String, String> = withContext(Dispatchers.IO) {
+        val map = mutableMapOf<String, String>()
+        try {
+            val cursor = readableDatabase.query(
+                "artist_category",
+                arrayOf("normalized_artist", "category"),
+                null,
+                null,
+                null,
+                null,
+                null
+            )
+            cursor.use {
+                while (it.moveToNext()) {
+                    map[it.getString(0)] = it.getString(1)
+                }
+            }
+        } catch (_: Exception) {}
+        map
+    }
+
     companion object {
         private const val DATABASE_NAME = "north_music_stats.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 4
 
         @Volatile
         private var instance: LocalStatsDatabase? = null

@@ -129,6 +129,7 @@ data class FolderItem(
 )
 
 enum class DownloadStatus {
+    QUEUED,
     DOWNLOADING,
     COMPLETED,
     FAILED
@@ -185,7 +186,8 @@ enum class LibraryFilter(val label: String) {
     ALBUMS("Albums"),
     ARTISTS("Artists"),
     PLAYLISTS("Playlists"),
-    FOLDERS("Folders")
+    FOLDERS("Folders"),
+    DOWNLOADED("Downloaded")
 }
 
 data class BottomNavItem(
@@ -250,15 +252,22 @@ enum class EqualizerPreset(val label: String, val bandGains: List<Float>) {
 data class DeviceProfile(
     val isEnabled: Boolean = true,
     val isAutoMode: Boolean = true,
-    val selectedPreset: EqualizerPreset = EqualizerPreset.POP,
+    val selectedPreset: EqualizerPreset? = EqualizerPreset.POP,
     val bandGains: List<Float> = listOf(2f, 4f, 2f, 1f, 3f), // in dB (-10.0f .. +10.0f)
     val bassBoostPercent: Float = 0.55f, // 0.0 .. 1.0
-    val virtualizerPercent: Float = 0.35f // 0.0 .. 1.0
+    val virtualizerPercent: Float = 0.35f, // 0.0 .. 1.0
+    val wooferLevelDb: Float = 0f, // -6.0f .. +6.0f
+    val isSurroundExpanded: Boolean = false,
+    val isVoiceEnhanced: Boolean = false,
+    val isNightMode: Boolean = false,
+    val isBassBoostMode: Boolean = false
 )
 
 data class EqualizerState(
     val isMasterEnabled: Boolean = true,
     val currentDevice: AudioOutputDevice = AudioOutputDevice.BLUETOOTH,
+    val connectedDeviceName: String? = null,
+    val matchedProfile: DeviceSoundProfile? = null,
     val detectedGenre: String = "Pop",
     val suggestedPresetTitle: String = "Bass lift",
     val profiles: Map<AudioOutputDevice, DeviceProfile> = mapOf(
@@ -273,7 +282,7 @@ data class EqualizerState(
         AudioOutputDevice.WIRED to DeviceProfile(
             isEnabled = true,
             isAutoMode = true,
-            selectedPreset = EqualizerPreset.FLAT,
+            selectedPreset = null,
             bandGains = listOf(0f, 0f, 0f, 0f, 0f),
             bassBoostPercent = 0.0f,
             virtualizerPercent = 0.0f
@@ -368,15 +377,18 @@ data class SettingsState(
 
     // 7. Downloads
     val saveFolder: String = "/storage/emulated/0/Music/Downloads",
+    val folderStructure: DownloadFolderStructure = DownloadFolderStructure.CATEGORY_ARTIST,
+    val askCategoryWhenUnknown: Boolean = false,
     val wifiOnly: Boolean = false,
     val wifiOnlyDownloads: Boolean = wifiOnly,
-    val parallelSlots: Int = 3,
+    val parallelSlots: Int = 1,
     val maxParallelDownloads: Int = parallelSlots,
     val namingFormat: String = "{artist} - {title}", // "{artist} - {title}", "{track} {title}", etc.
     val fileNamingFormat: String = namingFormat,
     val downloadSpeedLimitKbps: Int = 0, // 0 = unlimited
 
     // 8. Network & Metadata
+    val enableOnlineFeatures: Boolean = true,
     val autoDownloadMetadata: Boolean = true,
     val onlineMetadataLookup: Boolean = autoDownloadMetadata,
     val downloadArtistAndAlbumArt: Boolean = false,
@@ -391,5 +403,15 @@ data class SettingsState(
     val rotationLock: Boolean = lockScreenRotation,
     val backupAndRestoreInfo: String = "No backup found",
     val lastBackupDate: String? = null,
-    val setupDone: Boolean = false
+    val setupDone: Boolean = false,
+    val homeSectionOrder: List<String> = listOf(
+        "continue_listening",
+        "for_you",
+        "recently_added",
+        "downloaded",
+        "categories",
+        "artists"
+    ),
+    val disabledHomeSections: Set<String> = emptySet(),
+    val missingSetupCardDismissedTimestamp: Long = 0L
 )

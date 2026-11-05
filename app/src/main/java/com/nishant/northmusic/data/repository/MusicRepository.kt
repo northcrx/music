@@ -193,7 +193,14 @@ class MusicRepository private constructor(private val context: Context) {
         val settings = SettingsRepository.current
         val tagOverrides = statsDb.getAllSongTagOverrides()
         val minDurationMs = if (settings.ignoreShortTracks) settings.minSongDurationSeconds * 1000L else 0L
+        val whitelistFolders = settings.musicFolders.map { it.trim().removeSuffix("/").lowercase() }.filter { it.isNotBlank() }
         val blacklist = settings.foldersBlacklist.map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        val nonMusicPathTokens = listOf(
+            "call_rec", "call recording", "call recordings", "recordings/call",
+            "sound_recorder", "voice_recorder", "voicerecorder", "/recordings/",
+            "whatsapp audio", "whatsapp voice", "telegram audio",
+            "/notifications/", "/ringtones/", "/alarms/"
+        )
 
         val projection = mutableListOf(
             MediaStore.Audio.Media._ID,
@@ -219,7 +226,11 @@ class MusicRepository private constructor(private val context: Context) {
             }
         }.toTypedArray()
 
-        val selection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%') AND (${MediaStore.Audio.Media.DURATION} >= ? OR ${MediaStore.Audio.Media.DURATION} IS NULL)"
+        val selection = "(${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%') " +
+                "AND (${MediaStore.Audio.Media.IS_RINGTONE} = 0 OR ${MediaStore.Audio.Media.IS_RINGTONE} IS NULL) " +
+                "AND (${MediaStore.Audio.Media.IS_NOTIFICATION} = 0 OR ${MediaStore.Audio.Media.IS_NOTIFICATION} IS NULL) " +
+                "AND (${MediaStore.Audio.Media.IS_ALARM} = 0 OR ${MediaStore.Audio.Media.IS_ALARM} IS NULL) " +
+                "AND (${MediaStore.Audio.Media.DURATION} >= ? OR ${MediaStore.Audio.Media.DURATION} IS NULL)"
         val selectionArgs = arrayOf(minDurationMs.toString())
         val sortOrder = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
 
@@ -282,9 +293,28 @@ class MusicRepository private constructor(private val context: Context) {
                     val rawAlbumArtist = if (albumArtistCol >= 0) c.getString(albumArtistCol) else null
                     val effectiveAlbumArtistFromMedia = if (!rawAlbumArtist.isNullOrBlank() && rawAlbumArtist != "<unknown>") rawAlbumArtist.trim() else null
 
-                    // Check blacklist
                     val lowerPath = filePath.lowercase()
-                    if (blacklist.any { lowerPath.contains(it) }) {
+                    val lowerRel = relativePath.lowercase().trim('/')
+
+                    // 1. Strict Whitelist: If user configured specific musicFolders, only scan those folders
+                    if (whitelistFolders.isNotEmpty()) {
+                        val isInsideWhitelist = whitelistFolders.any { wf ->
+                            lowerPath.startsWith(wf) ||
+                            (lowerRel.isNotBlank() && (wf.endsWith(lowerRel.substringBefore('/')) || lowerRel.startsWith(wf.substringAfterLast('/'))))
+                        }
+                        if (!isInsideWhitelist) {
+                            continue
+                        }
+                    }
+
+                    // 2. User Blacklist
+                    if (blacklist.any { lowerPath.contains(it) || lowerRel.contains(it) }) {
+                        continue
+                    }
+
+                    // 3. Automatic exclusion of call recordings, voice notes & notification sounds
+                    val explicitlyWhitelisted = whitelistFolders.any { wf -> nonMusicPathTokens.any { wf.contains(it) } }
+                    if (!explicitlyWhitelisted && nonMusicPathTokens.any { lowerPath.contains(it) || lowerRel.contains(it) }) {
                         continue
                     }
 

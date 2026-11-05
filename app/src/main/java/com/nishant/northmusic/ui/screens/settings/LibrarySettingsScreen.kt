@@ -101,6 +101,7 @@ fun LibrarySettingsScreen(
     var showArtistMinCountDialog by remember { mutableStateOf(false) }
     var showAlbumMinCountDialog by remember { mutableStateOf(false) }
     var showDontSplitDialog by remember { mutableStateOf(false) }
+    var showOrganizeDialog by remember { mutableStateOf(false) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "rescan")
     val rotationAngle by infiniteTransition.animateFloat(
@@ -465,6 +466,55 @@ fun LibrarySettingsScreen(
                                     )
                                     Text(
                                         text = "Match missing covers and release tags via iTunes Search API",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(start = 20.dp, end = 20.dp)
+                        )
+
+                        // Organize existing music (Requirement 8)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showOrganizeDialog = true
+                                }
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.FolderSpecial,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = "Organize existing music",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Sort existing music into Category / Artist folders",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -944,6 +994,13 @@ fun LibrarySettingsScreen(
                     Text(if (fixState.isScanning) "Cancel" else "Done")
                 }
             }
+        )
+    }
+
+
+    if (showOrganizeDialog) {
+        com.nishant.northmusic.ui.dialogs.OrganizeMusicDialog(
+            onDismissRequest = { showOrganizeDialog = false }
         )
     }
 }

@@ -3,6 +3,7 @@ package com.nishant.northmusic.data.repository
 import android.content.Context
 import android.content.SharedPreferences
 import com.nishant.northmusic.data.model.AccentColor
+import com.nishant.northmusic.data.model.DownloadFolderStructure
 import com.nishant.northmusic.data.model.AppIcon
 import com.nishant.northmusic.util.AppIconManager
 import com.nishant.northmusic.data.model.SettingsState
@@ -81,6 +82,27 @@ object SettingsRepository {
         val savedDontSplit = savedDontSplitSet?.toList() ?: listOf("AC/DC", "Guns N' Roses", "Simon & Garfunkel", "Earth, Wind & Fire")
         val savedDownloadArt = sp.getBoolean("downloadArtistAndAlbumArt", false)
         val savedWifiOnly = sp.getBoolean("downloadOnlyOnWifi", true)
+        val savedFolderStructure = try {
+            val name = sp.getString("folderStructure", DownloadFolderStructure.CATEGORY_ARTIST.name) ?: DownloadFolderStructure.CATEGORY_ARTIST.name
+            DownloadFolderStructure.valueOf(name)
+        } catch (_: Exception) {
+            DownloadFolderStructure.CATEGORY_ARTIST
+        }
+        val savedAskCategory = sp.getBoolean("askCategoryWhenUnknown", false)
+        val savedEnableOnline = sp.getBoolean("enableOnlineFeatures", true)
+        val savedHomeOrderStr = sp.getString("homeSectionOrder", null)
+        val savedHomeOrder = savedHomeOrderStr?.split(",")?.filter { it.isNotBlank() } ?: listOf(
+            "continue_listening",
+            "for_you",
+            "recently_added",
+            "downloaded",
+            "categories",
+            "artists"
+        )
+        val savedDisabledSections = sp.getStringSet("disabledHomeSections", null) ?: emptySet()
+        val savedMissingSetupDismissed = sp.getLong("missingSetupCardDismissedTimestamp", 0L)
+
+        CategoryRulesRepository.init(context)
 
         val loaded = SettingsState(
             accentColor = savedAccent,
@@ -100,7 +122,13 @@ object SettingsRepository {
             splitArtistsOnAmpersand = savedSplitAmpersand,
             dontSplitArtistNames = savedDontSplit,
             downloadArtistAndAlbumArt = savedDownloadArt,
-            downloadOnlyOnWifi = savedWifiOnly
+            downloadOnlyOnWifi = savedWifiOnly,
+            folderStructure = savedFolderStructure,
+            askCategoryWhenUnknown = savedAskCategory,
+            enableOnlineFeatures = savedEnableOnline,
+            homeSectionOrder = savedHomeOrder,
+            disabledHomeSections = savedDisabledSections,
+            missingSetupCardDismissedTimestamp = savedMissingSetupDismissed
         )
 
         _settingsState.value = loaded
@@ -144,6 +172,12 @@ object SettingsRepository {
                 putStringSet("dontSplitArtistNames", updated.dontSplitArtistNames.toSet())
                 putBoolean("downloadArtistAndAlbumArt", updated.downloadArtistAndAlbumArt)
                 putBoolean("downloadOnlyOnWifi", updated.downloadOnlyOnWifi)
+                putString("folderStructure", updated.folderStructure.name)
+                putBoolean("askCategoryWhenUnknown", updated.askCategoryWhenUnknown)
+                putBoolean("enableOnlineFeatures", updated.enableOnlineFeatures)
+                putString("homeSectionOrder", updated.homeSectionOrder.joinToString(","))
+                putStringSet("disabledHomeSections", updated.disabledHomeSections)
+                putLong("missingSetupCardDismissedTimestamp", updated.missingSetupCardDismissedTimestamp)
                 apply()
             }
 

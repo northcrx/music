@@ -1,5 +1,6 @@
 package com.nishant.northmusic
 
+import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -13,9 +14,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nishant.northmusic.data.model.ThemeMode
+import com.nishant.northmusic.data.network.CdnMusicService
 import com.nishant.northmusic.data.repository.SettingsRepository
 import com.nishant.northmusic.navigation.MainScaffold
 import com.nishant.northmusic.ui.theme.NorthMusicTheme
+import com.nishant.northmusic.ui.viewmodels.DownloadsViewModel
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
@@ -26,6 +29,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         SettingsRepository.init(this)
+        handleIntent(intent)
 
         setContent {
             // Read only granular theme properties to avoid whole-app recompositions
@@ -61,6 +65,24 @@ class MainActivity : ComponentActivity() {
                 MainScaffold(
                     settingsViewModel = settingsViewModel
                 )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
+            val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+            if (!text.isNullOrBlank()) {
+                val url = CdnMusicService.extractFirstUrl(text) ?: text.trim()
+                if (url.isNotBlank()) {
+                    DownloadsViewModel.onSharedUrlReceived(url)
+                }
             }
         }
     }

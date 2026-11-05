@@ -2,6 +2,7 @@ package com.nishant.northmusic.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import com.nishant.northmusic.data.model.AudioOutputDevice
+import com.nishant.northmusic.data.model.DeviceSoundProfile
 import com.nishant.northmusic.data.model.EqualizerPreset
 import com.nishant.northmusic.data.model.EqualizerState
 import com.nishant.northmusic.playback.AudioFxManager
@@ -31,7 +32,11 @@ class EqualizerViewModel : ViewModel() {
         AudioFxManager.toggleAutoMode(enabled)
     }
 
-    fun selectPreset(preset: EqualizerPreset) {
+    fun selectSoundProfile(profile: DeviceSoundProfile) {
+        AudioFxManager.selectSoundProfile(profile)
+    }
+
+    fun selectPreset(preset: EqualizerPreset?) {
         AudioFxManager.selectPreset(preset)
     }
 
@@ -45,5 +50,29 @@ class EqualizerViewModel : ViewModel() {
 
     fun setVirtualizer(level: Float) {
         AudioFxManager.setVirtualizer(level)
+    }
+
+    fun setWooferLevel(gainDb: Float) {
+        AudioFxManager.setWooferLevel(gainDb)
+    }
+
+    fun toggleSurroundExpanded(enabled: Boolean) {
+        AudioFxManager.toggleSurroundExpanded(enabled)
+    }
+
+    fun toggleVoiceEnhanced(enabled: Boolean) {
+        AudioFxManager.toggleVoiceEnhanced(enabled)
+    }
+
+    fun toggleNightMode(enabled: Boolean) {
+        AudioFxManager.toggleNightMode(enabled)
+    }
+
+    fun toggleBassBoostMode(enabled: Boolean) {
+        AudioFxManager.toggleBassBoostMode(enabled)
+    }
+
+    fun resetToCalibratedProfile() {
+        AudioFxManager.resetToCalibratedProfile()
     }
 }

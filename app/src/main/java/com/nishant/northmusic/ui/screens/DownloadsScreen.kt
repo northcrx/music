@@ -1,8 +1,22 @@
 package com.nishant.northmusic.ui.screens
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.text.style.TextOverflow
+import com.nishant.northmusic.data.network.CdnMusicService
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material3.CircularProgressIndicator
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import com.nishant.northmusic.data.network.CategoryPromptData
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -81,6 +95,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nishant.northmusic.ui.components.AppBottomSheet
+import com.nishant.northmusic.ui.dialogs.OrganizeMusicDialog
+import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import com.nishant.northmusic.ui.components.DownloadCard
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.DownloadsTab
@@ -91,16 +109,38 @@ import com.nishant.northmusic.ui.viewmodels.DownloadsViewModel
 fun DownloadsScreen(
     downloadsViewModel: DownloadsViewModel,
     saveFolder: String = "/storage/emulated/0/Music/Downloads",
+    onNavigateToLibrary: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by downloadsViewModel.uiState.collectAsState()
+    val playlistPreview by downloadsViewModel.playlistPreview.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     var showAddUrlSheet by remember { mutableStateOf(false) }
     var urlInputText by remember { mutableStateOf("") }
     var topMenuExpanded by remember { mutableStateOf(false) }
+    var showOrganizeDialog by remember { mutableStateOf(false) }
+
+    val categoryPrompt by downloadsViewModel.categoryPromptFlow.collectAsState(initial = null)
+    var activePrompt by remember { mutableStateOf<CategoryPromptData?>(null) }
+    var selectedCategory by remember { mutableStateOf("Hip-Hop") }
+    var rememberForArtist by remember { mutableStateOf(true) }
+
+    LaunchedEffect(categoryPrompt) {
+        categoryPrompt?.let {
+            activePrompt = it
+            selectedCategory = "Hip-Hop"
+            rememberForArtist = true
+        }
+    }
 
     val detectedLinks = remember(urlInputText) {
-        urlInputText.lines().map { it.trim() }.filter { it.startsWith("http://") || it.startsWith("https://") }
+        urlInputText.lines()
+            .mapNotNull { line ->
+                val trimmed = line.trim()
+                if (trimmed.isBlank()) null
+                else CdnMusicService.extractFirstUrl(trimmed) ?: if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else null
+            }
+            .distinct()
     }
 
     val listState = rememberLazyListState()
@@ -120,12 +160,31 @@ fun DownloadsScreen(
         lastFirstVisibleItemScrollOffset = currentOffset
     }
 
+    var totalDragX by remember { mutableStateOf(0f) }
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(uiState.isSelectionMode) {
+                    if (!uiState.isSelectionMode) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { totalDragX = 0f },
+                            onDragEnd = {
+                                if (totalDragX > 70f) {
+                                    onNavigateToLibrary()
+                                }
+                            },
+                            onHorizontalDrag = { _, dragAmount ->
+                                totalDragX += dragAmount
+                            }
+                        )
+                    }
+                }
+        ) {
             // Top Bar: Normal vs Selection Mode
             if (uiState.isSelectionMode) {
                 TopAppBar(
@@ -270,6 +329,20 @@ fun DownloadsScreen(
                                     leadingIcon = {
                                         Icon(
                                             Icons.Rounded.ClearAll,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Organize into Music folder") },
+                                    onClick = {
+                                        topMenuExpanded = false
+                                        showOrganizeDialog = true
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.AutoMirrored.Rounded.DriveFileMove,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -465,6 +538,49 @@ fun DownloadsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = BottomListScrollPadding)
                 ) {
+                    if (uiState.selectedTab == DownloadsTab.COMPLETED && uiState.completedItems.isNotEmpty()) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    .clickable { showOrganizeDialog = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.DriveFileMove,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Organize downloads",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = "Sort songs into Category / Artist folders in your Music directory",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                     items(
                         items = uiState.currentList,
                         key = { it.id }
@@ -484,11 +600,10 @@ fun DownloadsScreen(
                                 downloadsViewModel.togglePauseResume(item.id)
                             },
                             onRetryClick = {
-                                downloadsViewModel.togglePauseResume(item.id)
+                                downloadsViewModel.retry(item.id)
                             },
                             onDeleteClick = {
-                                downloadsViewModel.toggleItemSelection(item.id)
-                                downloadsViewModel.deleteSelected()
+                                downloadsViewModel.cancel(item.id)
                             }
                         )
                     }
@@ -501,34 +616,34 @@ fun DownloadsScreen(
 
     // ModalBottomSheet for Adding URLs
     if (showAddUrlSheet) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-        ModalBottomSheet(
+        val isAnyPlaylist = detectedLinks.any { CdnMusicService.isPlaylistUrl(it) }
+        val actionText = if (isAnyPlaylist) "Analyze Playlist" else if (detectedLinks.isNotEmpty()) "Start Download (${detectedLinks.size})" else "Start Download"
+        AppBottomSheet(
             onDismissRequest = { showAddUrlSheet = false },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outlineVariant) }
+            title = "Add Download URLs",
+            subtitle = "Save directory: $saveFolder",
+            icon = Icons.Rounded.DownloadForOffline,
+            dismissButtonText = "Cancel",
+            confirmButtonText = actionText,
+            isConfirmEnabled = detectedLinks.isNotEmpty(),
+            onConfirm = {
+                if (detectedLinks.isNotEmpty()) {
+                    downloadsViewModel.addUrls(detectedLinks)
+                    urlInputText = ""
+                    showAddUrlSheet = false
+                }
+            },
+            onDismiss = { showAddUrlSheet = false }
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
-                    .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text(
-                        text = "Add Download URLs",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = {
                             val clipText = clipboardManager.getText()?.text
                             if (!clipText.isNullOrBlank()) {
@@ -536,24 +651,18 @@ fun DownloadsScreen(
                             }
                         },
                         shape = PillShape,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ContentPaste,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Paste", style = MaterialTheme.typography.labelSmall)
                     }
                 }
-
-                Text(
-                    text = "Save directory: $saveFolder",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
 
                 OutlinedTextField(
                     value = urlInputText,
@@ -562,7 +671,7 @@ fun DownloadsScreen(
                     placeholder = { Text("https://open.spotify.com/track/...\nhttps://youtube.com/watch?v=...\nhttps://www.jiosaavn.com/song/...") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp),
+                        .height(130.dp),
                     shape = RoundedCornerShape(16.dp),
                     maxLines = 5
                 )
@@ -575,42 +684,226 @@ fun DownloadsScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+            }
+        }
+    }
+
+
+    // Ask Category when unknown BottomSheet (Requirement 3)
+    if (activePrompt != null) {
+        val prompt = activePrompt!!
+        AppBottomSheet(
+            onDismissRequest = { activePrompt = null },
+            title = "Choose Category",
+            subtitle = "${prompt.title} • ${prompt.artist}",
+            confirmButtonText = "Save",
+            onConfirm = {
+                downloadsViewModel.applyCategoryChoice(prompt, selectedCategory, rememberForArtist)
+                activePrompt = null
+            },
+            dismissButtonText = "Skip",
+            onDismiss = { activePrompt = null }
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "No genre category matched for this track. Select where it belongs:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                val categories = listOf("Hip-Hop", "Pop", "Bollywood", "English", "Rock", "Electronic", "Classical", "Jazz", "Chill", "Other")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categories.forEach { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat,
+                            onClick = { selectedCategory = cat },
+                            label = { Text(cat) },
+                            shape = PillShape
+                        )
+                    }
+                }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable { rememberForArtist = !rememberForArtist }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = { showAddUrlSheet = false },
+                    Checkbox(
+                        checked = rememberForArtist,
+                        onCheckedChange = { rememberForArtist = it }
+                    )
+                    Text(
+                        text = "Remember for ${prompt.artist}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    }
+
+
+    // Playlist Preview & Batch Download BottomSheet
+    if (playlistPreview != null) {
+        val preview = playlistPreview!!
+        AppBottomSheet(
+            onDismissRequest = { downloadsViewModel.dismissPlaylistPreview() },
+            title = if (preview.isLoading) "Analyzing Playlist..." else preview.title,
+            subtitle = if (preview.isLoading) "Extracting songs & tags..." else "${preview.author} • ${preview.source}",
+            icon = Icons.AutoMirrored.Rounded.QueueMusic,
+            confirmButtonText = if (preview.isLoading || preview.errorMessage != null) null else "Download Selected (${preview.selectedCount})",
+            isConfirmEnabled = preview.selectedCount > 0 && !preview.isLoading,
+            onConfirm = {
+                downloadsViewModel.downloadSelectedPlaylistTracks()
+            },
+            dismissButtonText = "Cancel",
+            onDismiss = { downloadsViewModel.dismissPlaylistPreview() }
+        ) {
+            if (preview.isLoading) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 3.dp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Analyzing playlist contents...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (preview.errorMessage != null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(40.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = preview.errorMessage ?: "Failed to load playlist",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Header row: Select all checkbox & counter
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = PillShape
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Cancel")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    downloadsViewModel.selectAllPlaylistTracks(!preview.allSelected)
+                                }
+                                .padding(vertical = 4.dp, horizontal = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = preview.allSelected,
+                                onCheckedChange = { downloadsViewModel.selectAllPlaylistTracks(it) }
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (preview.allSelected) "Deselect All" else "Select All",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Text(
+                            text = "${preview.selectedCount} / ${preview.totalCount} selected",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
 
-                    Button(
-                        onClick = {
-                            if (detectedLinks.isNotEmpty()) {
-                                downloadsViewModel.addUrls(detectedLinks)
-                                urlInputText = ""
-                                showAddUrlSheet = false
-                            }
-                        },
-                        enabled = detectedLinks.isNotEmpty(),
+                    // Track items list
+                    LazyColumn(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = PillShape,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
+                            .fillMaxWidth()
+                            .heightIn(max = 340.dp)
                     ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Start Download")
+                        itemsIndexed(preview.tracks) { index, track ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        downloadsViewModel.togglePlaylistTrack(index)
+                                    }
+                                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = track.isSelected,
+                                    onCheckedChange = { downloadsViewModel.togglePlaylistTrack(index) }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = track.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = track.artist,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                if (track.durationSeconds > 0) {
+                                    val minutes = track.durationSeconds / 60
+                                    val seconds = track.durationSeconds % 60
+                                    Text(
+                                        text = String.format("%d:%02d", minutes, seconds),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

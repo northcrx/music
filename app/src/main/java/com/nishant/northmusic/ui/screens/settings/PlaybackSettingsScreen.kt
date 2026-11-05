@@ -1,5 +1,9 @@
 package com.nishant.northmusic.ui.screens.settings
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nishant.northmusic.navigation.BottomListScrollPadding
@@ -56,6 +61,7 @@ import com.nishant.northmusic.ui.components.SettingsSwitchRow
 import com.nishant.northmusic.ui.components.SettingsValueRow
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
 import com.nishant.northmusic.util.FeatureFlags
+import com.nishant.northmusic.util.PermissionUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,8 +71,17 @@ fun PlaybackSettingsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val state by settingsViewModel.settingsState.collectAsState()
     var showReplayGainDialog by remember { mutableStateOf(false) }
+
+    val bluetoothLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            settingsViewModel.setBluetoothResumeOnConnect(true)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -278,7 +293,17 @@ fun PlaybackSettingsScreen(
                             summary = "Start playing when your favorite Bluetooth speaker or earbuds reconnect",
                             icon = Icons.Rounded.Bluetooth,
                             checked = state.bluetoothResumeOnConnect,
-                            onCheckedChange = { settingsViewModel.setBluetoothResumeOnConnect(it) }
+                            onCheckedChange = { enable ->
+                                if (enable) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !PermissionUtils.hasBluetoothPermission(context)) {
+                                        bluetoothLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                                    } else {
+                                        settingsViewModel.setBluetoothResumeOnConnect(true)
+                                    }
+                                } else {
+                                    settingsViewModel.setBluetoothResumeOnConnect(false)
+                                }
+                            }
                         )
                     }
                 }

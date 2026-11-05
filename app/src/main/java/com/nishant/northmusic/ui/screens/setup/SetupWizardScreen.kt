@@ -1,7 +1,5 @@
 package com.nishant.northmusic.ui.screens.setup
 
-import com.nishant.northmusic.ui.components.AppLogo
-
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,7 +19,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,11 +35,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AudioFile
+import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Sync
@@ -54,13 +55,15 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -78,6 +81,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,19 +90,21 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.nishant.northmusic.data.repository.MusicRepository
-import com.nishant.northmusic.data.model.SettingsState
-import com.nishant.northmusic.data.work.ArtistPhotoWorker
-import androidx.compose.material3.Switch
 import com.nishant.northmusic.data.model.AccentColor
 import com.nishant.northmusic.data.model.AppIcon
-import com.nishant.northmusic.ui.components.AppIconPresetSelector
+import com.nishant.northmusic.data.model.DownloadFolderStructure
+import com.nishant.northmusic.data.model.SettingsState
 import com.nishant.northmusic.data.model.ThemeMode
+import com.nishant.northmusic.data.repository.MusicRepository
+import com.nishant.northmusic.data.work.ArtistPhotoWorker
+import com.nishant.northmusic.ui.components.AppIconPresetSelector
+import com.nishant.northmusic.ui.components.AppLogo
 import com.nishant.northmusic.ui.theme.PillShape
 import com.nishant.northmusic.ui.viewmodels.SettingsViewModel
 import com.nishant.northmusic.util.PermissionUtils
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val TOTAL_PAGES = 9
 
 @Composable
 fun SetupWizardScreen(
@@ -108,7 +114,7 @@ fun SetupWizardScreen(
 ) {
     val state by settingsViewModel.settingsState.collectAsState()
     val context = LocalContext.current
-    val pagerState = rememberPagerState(pageCount = { 5 })
+    val pagerState = rememberPagerState(pageCount = { TOTAL_PAGES })
     val scope = rememberCoroutineScope()
 
     Column(
@@ -125,13 +131,13 @@ fun SetupWizardScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Step Dots
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(5) { index ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(TOTAL_PAGES) { index ->
                     val isActive = pagerState.currentPage == index
                     Box(
                         modifier = Modifier
                             .height(6.dp)
-                            .width(if (isActive) 24.dp else 8.dp)
+                            .width(if (isActive) 22.dp else 6.dp)
                             .clip(CircleShape)
                             .background(
                                 if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
@@ -140,7 +146,7 @@ fun SetupWizardScreen(
                 }
             }
 
-            if (pagerState.currentPage < 4) {
+            if (pagerState.currentPage < TOTAL_PAGES - 1) {
                 TextButton(
                     onClick = {
                         settingsViewModel.setSetupDone(true)
@@ -165,10 +171,21 @@ fun SetupWizardScreen(
         ) { page ->
             when (page) {
                 0 -> StepWelcome()
-                1 -> StepPermissions()
-                2 -> StepAppearance(settingsViewModel, state.accentColor, state.themeMode, state.appIcon)
-                3 -> StepFolders(state.musicFolders)
-                4 -> StepDone(state, settingsViewModel)
+                1 -> StepLook(settingsViewModel, state.accentColor, state.themeMode, state.appIcon)
+                2 -> StepMusicAccess(onOpenSettings = { PermissionUtils.openAppSettings(context) })
+                3 -> StepNotifications(onOpenSettings = { PermissionUtils.openAppSettings(context) })
+                4 -> StepFolders(state.musicFolders)
+                5 -> StepOnlineFeatures(settingsViewModel, state)
+                6 -> StepDownloads(settingsViewModel, state.folderStructure)
+                7 -> StepBackgroundPlayback(onOpenBatterySettings = { PermissionUtils.openBatterySettings(context) })
+                8 -> StepDone(
+                    state = state,
+                    onJumpToPage = { targetPage ->
+                        scope.launch {
+                            pagerState.animateScrollToPage(targetPage)
+                        }
+                    }
+                )
             }
         }
 
@@ -201,24 +218,28 @@ fun SetupWizardScreen(
                 Spacer(modifier = Modifier.width(1.dp))
             }
 
+            val isLastPage = pagerState.currentPage == TOTAL_PAGES - 1
             Button(
                 onClick = {
-                    if (pagerState.currentPage < 4) {
+                    if (!isLastPage) {
                         scope.launch {
                             pagerState.animateScrollToPage(pagerState.currentPage + 1)
                         }
                     } else {
                         settingsViewModel.setSetupDone(true)
+                        if (state.downloadArtistAndAlbumArt) {
+                            ArtistPhotoWorker.enqueue(context)
+                        }
                         MusicRepository.getInstance(context).rescan()
                         onComplete()
                     }
                 },
                 shape = PillShape
             ) {
-                Text(if (pagerState.currentPage == 4) "Get Started" else "Next")
+                Text(if (isLastPage) "Get Started" else "Next")
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
-                    imageVector = if (pagerState.currentPage == 4) Icons.Rounded.PlayArrow else Icons.AutoMirrored.Rounded.ArrowForward,
+                    imageVector = if (isLastPage) Icons.Rounded.PlayArrow else Icons.AutoMirrored.Rounded.ArrowForward,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -264,227 +285,7 @@ private fun StepWelcome() {
 }
 
 @Composable
-private fun StepPermissions() {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    var audioGranted by remember { mutableStateOf(PermissionUtils.hasAudioPermission(context)) }
-    var notifGranted by remember { mutableStateOf(PermissionUtils.hasNotificationPermission(context)) }
-    var audioDeniedOnce by remember { mutableStateOf(false) }
-
-    // Recheck permissions when returning from settings
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                audioGranted = PermissionUtils.hasAudioPermission(context)
-                notifGranted = PermissionUtils.hasNotificationPermission(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    val audioPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        audioGranted = isGranted
-        if (!isGranted) {
-            audioDeniedOnce = true
-        }
-    }
-
-    val notifPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        notifGranted = isGranted
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Permissions",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "North Music needs access to your local audio files to scan and play your music library, plus notifications for media playback controls.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Audio Permission Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    if (!audioGranted) {
-                        audioPermissionLauncher.launch(PermissionUtils.getRequiredAudioPermission())
-                    }
-                },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Row(
-                modifier = Modifier.padding(18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    Icons.Rounded.AudioFile,
-                    contentDescription = null,
-                    tint = if (audioGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(28.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Audio files",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = if (audioGranted) "Permission granted" else "Tap to grant access to your audio library",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    imageVector = if (audioGranted) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = if (audioGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-                )
-            }
-        }
-
-        if (!audioGranted) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = {
-                    audioPermissionLauncher.launch(PermissionUtils.getRequiredAudioPermission())
-                },
-                shape = PillShape,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-            ) {
-                Icon(Icons.Rounded.AudioFile, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Allow Audio Permission")
-            }
-        }
-
-        // If audio permission is denied, show friendly explanation and settings button
-        AnimatedVisibility(visible = !audioGranted && audioDeniedOnce) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        text = "Audio permission is required to index and play local music. If you clicked 'Don't ask again', please allow it in system settings.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        FilledTonalButton(
-                            onClick = {
-                                audioPermissionLauncher.launch(PermissionUtils.getRequiredAudioPermission())
-                            },
-                            shape = PillShape,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Grant access")
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                PermissionUtils.openAppSettings(context)
-                            },
-                            shape = PillShape,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Rounded.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Settings")
-                        }
-                    }
-                }
-            }
-        }
-
-        // Notification Permission Card (Android 13+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        if (!notifGranted) {
-                            notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-            ) {
-                Row(
-                    modifier = Modifier.padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Notifications,
-                        contentDescription = null,
-                        tint = if (notifGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Playback notifications",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = if (notifGranted) "Permission granted" else "Show background and lockscreen playback controls",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Icon(
-                        imageVector = if (notifGranted) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = if (notifGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StepAppearance(
+private fun StepLook(
     settingsViewModel: SettingsViewModel,
     selectedAccent: AccentColor,
     themeMode: ThemeMode,
@@ -614,6 +415,260 @@ private fun StepAppearance(
 }
 
 @Composable
+private fun StepMusicAccess(onOpenSettings: () -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var isGranted by remember { mutableStateOf(PermissionUtils.hasAudioPermission(context)) }
+    var attempted by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isGranted = PermissionUtils.hasAudioPermission(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        isGranted = granted
+        attempted = true
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.AudioFile,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(36.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "Music Access",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = "NorthMusic requires access to read audio files from your device to index your local songs, load embedded tags and artwork, and support offline playback.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        if (isGranted) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Granted",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        } else {
+            Button(
+                onClick = {
+                    launcher.launch(PermissionUtils.getRequiredAudioPermission())
+                },
+                shape = PillShape
+            ) {
+                Text("Grant music access")
+            }
+
+            if (attempted && !isGranted) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Permission was not granted. You can still stream online, or allow music access in app settings anytime.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FilledTonalButton(
+                    onClick = onOpenSettings,
+                    shape = PillShape
+                ) {
+                    Icon(Icons.Rounded.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Open app settings")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepNotifications(onOpenSettings: () -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var isGranted by remember { mutableStateOf(PermissionUtils.hasNotificationPermission(context)) }
+    var attempted by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isGranted = PermissionUtils.hasNotificationPermission(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        isGranted = granted
+        attempted = true
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Notifications,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(36.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "Playback Notifications",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = "Allows NorthMusic to show playback controls (Play, Pause, Skip, Like) in your notification shade and on your lock screen while songs are playing.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        if (isGranted) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Granted",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        } else {
+            Button(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        isGranted = true
+                    }
+                },
+                shape = PillShape
+            ) {
+                Text("Allow notifications")
+            }
+
+            if (attempted && !isGranted) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Notification permission was not granted. Media playback controls will not appear in the status bar.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FilledTonalButton(
+                    onClick = onOpenSettings,
+                    shape = PillShape
+                ) {
+                    Icon(Icons.Rounded.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Open app settings")
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun StepFolders(initialFolders: List<String>) {
     val selectedFolders = remember { mutableStateListOf(*initialFolders.toTypedArray()) }
 
@@ -625,7 +680,7 @@ private fun StepFolders(initialFolders: List<String>) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Music Folders",
+            text = "Folders to Scan",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
@@ -634,7 +689,7 @@ private fun StepFolders(initialFolders: List<String>) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "North Music automatically scans your device's audio folders. You can customize scanning in Settings > Library.",
+            text = "Select the storage folders on your device where music is located. You can add or blacklist folders anytime in Settings > Library.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -688,81 +743,76 @@ private fun StepFolders(initialFolders: List<String>) {
 }
 
 @Composable
-private fun StepDone(
-    state: SettingsState,
-    settingsViewModel: SettingsViewModel
+private fun StepOnlineFeatures(
+    settingsViewModel: SettingsViewModel,
+    state: SettingsState
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "done_spin")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(animation = tween(4000, easing = LinearEasing)),
-        label = "rotation"
-    )
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.Rounded.Sync,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                modifier = Modifier
-                    .size(90.dp)
-                    .rotate(rotation)
-            )
-            Icon(
-                imageVector = Icons.Rounded.CheckCircle,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
         Text(
-            text = "You're All Set!",
-            style = MaterialTheme.typography.headlineLarge,
+            text = "Online Features",
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Your music library is ready to explore.",
+            text = "All online features are opt-in. You have complete control over data usage.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Switch 1: Online Search
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Download artist photos and missing album art",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Online music search",
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "High-res photos from Deezer and iTunes",
+                            text = "Search, stream, and download 320kbps songs and playlists online.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = state.enableOnlineFeatures,
+                        onCheckedChange = { settingsViewModel.setEnableOnlineFeatures(it) }
+                    )
+                }
+
+                // Switch 2: Artist photos & album art
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Artist photos and album art",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Fetch high-resolution artist portraits and missing album covers automatically.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -773,25 +823,394 @@ private fun StepDone(
                     )
                 }
 
-                if (state.downloadArtistAndAlbumArt) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Only on Wi-Fi",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        Switch(
-                            checked = state.downloadOnlyOnWifi,
-                            onCheckedChange = { settingsViewModel.setDownloadOnlyOnWifi(it) }
+                // Switch 3: Wi-Fi only
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Wi-Fi only",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Save cellular data by downloading artwork, lyrics, and audio only on Wi-Fi.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = state.downloadOnlyOnWifi,
+                        onCheckedChange = { settingsViewModel.setDownloadOnlyOnWifi(it) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepDownloads(
+    settingsViewModel: SettingsViewModel,
+    selectedStructure: DownloadFolderStructure
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Downloads Folder",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Choose how newly downloaded music is organized in your device's Music folder:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        DownloadFolderStructure.entries.forEach { structure ->
+            val isSelected = selectedStructure == structure
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { settingsViewModel.setFolderStructure(structure) },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = isSelected,
+                        onClick = { settingsViewModel.setFolderStructure(structure) },
+                        colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = structure.label,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = structure.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Live Preview Box
+        val previewPath = when (selectedStructure) {
+            DownloadFolderStructure.CATEGORY_ARTIST -> "Music/Hip-Hop/Artist/Artist - Title.m4a"
+            DownloadFolderStructure.ARTIST_ONLY -> "Music/Artist/Artist - Title.m4a"
+            DownloadFolderStructure.FLAT -> "Music/Artist - Title.m4a"
+        }
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "LIVE PATH PREVIEW",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = previewPath,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Automatic Scoped Storage",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Downloads are saved directly into your device's standard Music folder. Modern Android automatically authorizes this without needing manual folder picker permissions.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepBackgroundPlayback(onOpenBatterySettings: () -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var isUnrestricted by remember { mutableStateOf(PermissionUtils.isBatteryOptimizationIgnored(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isUnrestricted = PermissionUtils.isBatteryOptimizationIgnored(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.BatteryChargingFull,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(36.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "Background Playback",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = "Some Android devices aggressively terminate background processes to save battery, which can stop your music when the screen is turned off or when switching apps.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            lineHeight = 22.sp
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Tip: In app settings, set Battery usage to \"Unrestricted\" for uninterrupted background audio.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        FilledTonalButton(
+            onClick = onOpenBatterySettings,
+            shape = PillShape
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Open battery settings")
+        }
+    }
+}
+
+@Composable
+private fun StepDone(
+    state: SettingsState,
+    onJumpToPage: (Int) -> Unit
+) {
+    val context = LocalContext.current
+    val hasAudio = PermissionUtils.hasAudioPermission(context)
+    val hasNotif = PermissionUtils.hasNotificationPermission(context)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(68.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .align(Alignment.CenterHorizontally),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(38.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "You're All Set!",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "Review your setup configuration below. You can change any option anytime in Settings.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Summary Row 1: Music Access
+                SummaryItemRow(
+                    label = "Music access",
+                    status = if (hasAudio) "Granted" else "Skipped",
+                    isGood = hasAudio,
+                    onChange = { onJumpToPage(2) }
+                )
+
+                // Summary Row 2: Notifications
+                SummaryItemRow(
+                    label = "Notifications",
+                    status = if (hasNotif) "Allowed" else "Skipped",
+                    isGood = hasNotif,
+                    onChange = { onJumpToPage(3) }
+                )
+
+                // Summary Row 3: Online features
+                SummaryItemRow(
+                    label = "Online features",
+                    status = if (state.enableOnlineFeatures) "Enabled" else "Disabled",
+                    isGood = state.enableOnlineFeatures,
+                    onChange = { onJumpToPage(5) }
+                )
+
+                // Summary Row 4: Folder structure
+                SummaryItemRow(
+                    label = "Folder structure",
+                    status = state.folderStructure.label,
+                    isGood = true,
+                    onChange = { onJumpToPage(6) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryItemRow(
+    label: String,
+    status: String,
+    isGood: Boolean,
+    onChange: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isGood) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        TextButton(
+            onClick = onChange,
+            shape = PillShape
+        ) {
+            Text("Change")
         }
     }
 }

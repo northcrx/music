@@ -664,6 +664,7 @@
             </a>
 
             <div class="nav-links">
+                <a href="studio/" class="nav-link-item" style="color: #A78BFA; font-weight: 600;">Studio Web</a>
                 <a href="#features" class="nav-link-item">Features</a>
                 <a href="#catalog" class="nav-link-item">Catalog v0.2</a>
                 <a href="#install-guide" class="nav-link-item">Install Guide</a>
@@ -690,11 +691,11 @@
 
             <div class="hero-actions">
                 <!-- Direct APK Download Button from GitHub Release -->
-                <a href="https://github.com/northcrx/music/releases/download/v0.2/NorthMusic-v0.2.apk" class="btn-primary" id="download-btn">
+                <a href="https://github.com/northcrx/music/releases/download/v0.3-beta/NorthMusic-v0.3-beta.apk" class="btn-primary" id="download-btn">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
                     </svg>
-                    <span>Download v0.2 APK (54.5 MB)</span>
+                    <span>Download v0.3 Beta APK (55.1 MB)</span>
                 </a>
 
                 <a href="#install-guide" class="btn-secondary">
@@ -706,11 +707,11 @@
                     <span>Installation Guide</span>
                 </a>
 
-                <a href="https://github.com/northcrx/music/releases/tag/v0.2" target="_blank" rel="noopener" class="btn-secondary" style="border-color: rgba(37, 99, 235, 0.35);">
+                <a href="https://github.com/northcrx/music/releases/tag/v0.3-beta" target="_blank" rel="noopener" class="btn-secondary" style="border-color: rgba(37, 99, 235, 0.35);">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
                     </svg>
-                    <span>Release v0.2 on GitHub</span>
+                    <span>Release v0.3 Beta on GitHub</span>
                 </a>
             </div>
 
@@ -735,44 +736,45 @@
             <div class="catalog-header">
                 <div class="catalog-title">
                     <span>Catalog of Changes</span>
-                    <span class="catalog-tag">v0.2</span>
+                    <span class="catalog-tag">v0.3 Beta</span>
                 </div>
                 <div style="font-size: 0.88rem; color: var(--text-secondary);">November 2026</div>
             </div>
             <p style="color: var(--text-secondary); font-size: 0.98rem; margin-bottom: 18px;">
-                North Music evolves from a local-only player into a hybrid music platform with online 320kbps CDN indexing and downloads.
+                North Music v0.3 Beta introduces categorized search filters, a concurrency-controlled background download queue, 1-tap album/playlist downloads, zone-based gesture navigation, and output sound profiles.
             </p>
 
             <div class="catalog-group">
                 <div class="catalog-group-title">Added</div>
                 <div class="catalog-list">
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Online 320kbps music indexing directly from studio CDN in Home search bar</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Instant tap-to-stream engine via Jetpack Media3 ExoPlayer for online search results</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Smart link resolver detecting Spotify, YouTube Music, and JioSaavn URLs</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Automated track downloader with embedded ID3 metadata tags (Title, Artist, Album, Year)</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>High-resolution album cover artwork embedding for downloaded files</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Dedicated "Downloaded Music" carousel section on Home tab</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Compact 54dp floating pill dock bottom navigation with snug spacing</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Network permissions (INTERNET, ACCESS_NETWORK_STATE) and cleartext audio traffic support</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Filtered search tabs: All, Tracks, Albums, and Artists with infinite pagination & shimmer loading skeletons</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Sequential & concurrency-controlled download queue preventing bandwidth stalls and CDN timeouts</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>1-tap "Download Whole Album" and batch playlist downloader maintaining exact track order</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Automatic bitrate fallback (320kbps -> 160kbps -> 96kbps) when high-bitrate files are not hosted on CDN</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>HTTP Range (206 Partial Content) support for resuming interrupted downloads without loss</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Output device sound profiles (Bluetooth, Wired, Phone Speaker) with auto device detection</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Zone-based edge gestures: top 20% opens drawer/settings; middle 60% switches Home/Library/Downloads</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Full open-source contribution guidelines, issue templates, and DMCA policy documentation</span></div>
                 </div>
             </div>
 
             <div class="catalog-group">
                 <div class="catalog-group-title" style="margin-top: 14px;">Changed</div>
                 <div class="catalog-list">
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Redesigned navigation bar from tall 80dp+ standard M3 container to 54dp rounded floating pill dock</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Optimized list bottom padding to 110dp to ensure fluid scrolling above floating dock</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Upgraded audio playback pipeline to support remote HTTP/HTTPS streaming alongside local MediaStore URIs</span></div>
-                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Updated search bar with debounced flow to prevent excessive network queries during typing</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>MiniPlayer now persists across search results and sub-screens with upward expansion to Full Player</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Strict artist attribution prioritizing primary_artists over background singers</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Category and artist directory organization (Music/&lt;Category&gt;/&lt;Artist&gt;/&lt;Song&gt;.ext)</span></div>
+                    <div class="catalog-row"><span class="badge-add">[+]</span><span>Cleaned search bar UI to concise 'Search music' and removed intrusive download notification toasts</span></div>
                 </div>
             </div>
 
             <div class="catalog-group">
                 <div class="catalog-group-title" style="margin-top: 14px;">Fixed / Removed</div>
                 <div class="catalog-list">
-                    <div class="catalog-row"><span class="badge-remove">[-]</span><span>Fixed empty search results caused by missing network permissions</span></div>
-                    <div class="catalog-row"><span class="badge-remove">[-]</span><span>Eliminated excessive dead space and vertical voids across bottom tab bar</span></div>
-                    <div class="catalog-row"><span class="badge-remove">[-]</span><span>Removed offline-only limitations, enabling hybrid local and cloud playback</span></div>
+                    <div class="catalog-row"><span class="badge-remove">[-]</span><span>Fixed CDN timeout errors and 0 MB/s speed drops when downloading whole playlists</span></div>
+                    <div class="catalog-row"><span class="badge-remove">[-]</span><span>Fixed Unable to resolve host aac.saavncdn.com DNS choke caused by parallel socket exhaustion</span></div>
+                    <div class="catalog-row"><span class="badge-remove">[-]</span><span>Fixed unresponsive Retry button on failed downloads</span></div>
+                    <div class="catalog-row"><span class="badge-remove">[-]</span><span>Fixed bottom navigation bar shifting to the top of screen in specific drawer gestures</span></div>
                 </div>
             </div>
         </section>

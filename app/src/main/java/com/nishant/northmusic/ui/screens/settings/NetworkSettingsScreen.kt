@@ -77,6 +77,18 @@ fun NetworkSettingsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
+            SettingsSectionTitle(title = "Online Features")
+
+            SettingsSwitchRow(
+                title = "Enable online & network features",
+                subtitle = "Allow streaming, online search, and metadata fetching. Turn off to run North purely offline with zero network connections.",
+                checked = state.enableOnlineFeatures,
+                onCheckedChange = { checked ->
+                    settingsViewModel.setEnableOnlineFeatures(checked)
+                },
+                icon = Icons.Rounded.CloudDownload
+            )
+
             SettingsSectionTitle(title = "Artwork & Photos")
 
             SettingsSwitchRow(

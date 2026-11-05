@@ -21,12 +21,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -54,7 +60,7 @@ import com.nishant.northmusic.data.model.PlayerState
  * - Nocturnal Semi-Transparent Dark Glass aesthetic with hairline dark-supported outline.
  * - Minimalist transparent play/pause button with white icon and circular line completing as music plays.
  * - Crisp typography and controls (Title in white, artist in slate, favorite & skip).
- * - Gestures: Tap opens Now Playing; swipe left/right skips track; swipe down hides it.
+ * - Gestures: Tap opens Now Playing; swipe left: skip next; swipe right: skip previous; swipe down hides it.
  */
 @Composable
 fun MiniPlayer(
@@ -64,7 +70,11 @@ fun MiniPlayer(
     onPlayPauseClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onNextClick: () -> Unit = {},
+    onPreviousClick: () -> Unit = {},
     onDismiss: () -> Unit = {},
+    onDownloadClick: (() -> Unit)? = null,
+    isDownloaded: Boolean = false,
+    isDownloading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
@@ -79,8 +89,8 @@ fun MiniPlayer(
         var totalDragY by remember { mutableFloatStateOf(0f) }
 
         // Transparent dark background supported by subtle hairline border
-        val miniPlayerBackground = Color(0xCC0D131F)
-        val frostedBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
+        val miniPlayerBackground = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.95f)
+        val frostedBorder = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
         Surface(
             modifier = Modifier
@@ -89,8 +99,8 @@ fun MiniPlayer(
                 .shadow(
                     elevation = 6.dp,
                     shape = RoundedCornerShape(22.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.35f),
-                    spotColor = Color.Black.copy(alpha = 0.45f)
+                    ambientColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.12f),
+                    spotColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.18f)
                 )
                 .clip(RoundedCornerShape(22.dp))
                 .clickable(onClick = onTap)
@@ -102,10 +112,14 @@ fun MiniPlayer(
                             totalDragY += dragAmount.y
                         },
                         onDragEnd = {
-                            if (totalDragY > 70f && kotlin.math.abs(totalDragY) > kotlin.math.abs(totalDragX)) {
+                            if (totalDragY < -50f && kotlin.math.abs(totalDragY) > kotlin.math.abs(totalDragX)) {
+                                onTap() // Swipe up opens Now Playing
+                            } else if (totalDragY > 70f && kotlin.math.abs(totalDragY) > kotlin.math.abs(totalDragX)) {
                                 onDismiss()
-                            } else if (kotlin.math.abs(totalDragX) > 70f) {
+                            } else if (totalDragX < -70f) {
                                 onNextClick()
+                            } else if (totalDragX > 70f) {
+                                onPreviousClick()
                             }
                             totalDragX = 0f
                             totalDragY = 0f
@@ -134,7 +148,7 @@ fun MiniPlayer(
                 ) {
                     // 44dp rounded artwork with async loading and fallback
                     AsyncSongArtwork(
-                        artworkUri = song.albumArtUri,
+                        albumArtUri = song.albumArtUri,
                         size = 44.dp,
                         shape = RoundedCornerShape(10.dp),
                         colorSeed = song.colorSeed
@@ -150,7 +164,7 @@ fun MiniPlayer(
                             text = song.title,
                             style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.5.sp),
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -158,23 +172,51 @@ fun MiniPlayer(
                         Text(
                             text = song.artist,
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = Color(0xFF94A3B8),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    // Favorite Button
-                    IconButton(
-                        onClick = onFavoriteClick,
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (playerState.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (playerState.isFavorite) Color(0xFFFF3B5C) else Color.White.copy(alpha = 0.75f),
-                            modifier = Modifier.size(22.dp)
-                        )
+                    val isOnline = song.filePath.startsWith("http://") || song.filePath.startsWith("https://") || song.id.startsWith("online_")
+                    if (isOnline && !isDownloaded) {
+                        if (isDownloading) {
+                            Box(
+                                modifier = Modifier.size(38.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        } else {
+                            IconButton(
+                                onClick = { onDownloadClick?.invoke() },
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Download,
+                                    contentDescription = "Download song",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        // Favorite Button for downloaded / local song
+                        IconButton(
+                            onClick = onFavoriteClick,
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (playerState.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (playerState.isFavorite) Color(0xFFFF3B5C) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(4.dp))
@@ -189,9 +231,9 @@ fun MiniPlayer(
                         iconSize = 24.dp,
                         strokeWidth = 2.5.dp,
                         containerColor = Color.Transparent,
-                        iconTint = Color.White,
-                        ringColor = Color(0xFF3B82F6),
-                        trackColor = Color.White.copy(alpha = 0.18f)
+                        iconTint = MaterialTheme.colorScheme.onSurface,
+                        ringColor = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                     )
 
                     Spacer(modifier = Modifier.width(4.dp))
@@ -204,7 +246,7 @@ fun MiniPlayer(
                         Icon(
                             imageVector = Icons.Rounded.SkipNext,
                             contentDescription = "Next",
-                            tint = Color.White.copy(alpha = 0.85f),
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(24.dp)
                         )
                     }

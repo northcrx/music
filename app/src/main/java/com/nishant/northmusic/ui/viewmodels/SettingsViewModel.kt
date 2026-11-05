@@ -3,6 +3,7 @@ package com.nishant.northmusic.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nishant.northmusic.data.model.AccentColor
+import com.nishant.northmusic.data.model.DownloadFolderStructure
 import com.nishant.northmusic.data.model.AppIcon
 import com.nishant.northmusic.data.model.MetadataFixItem
 import com.nishant.northmusic.data.model.MetadataFixState
@@ -307,6 +308,16 @@ class SettingsViewModel : ViewModel() {
     }
 
     // --- Downloads Settings ---
+    fun setFolderStructure(structure: DownloadFolderStructure) {
+        updateState { it.copy(folderStructure = structure) }
+    }
+
+    fun setAskCategoryWhenUnknown(enabled: Boolean) {
+        updateState { it.copy(askCategoryWhenUnknown = enabled) }
+    }
+
+    fun toggleAskCategoryWhenUnknown(enabled: Boolean) = setAskCategoryWhenUnknown(enabled)
+
     fun setSaveFolder(folder: String) {
         updateState { it.copy(saveFolder = folder) }
     }
@@ -334,6 +345,10 @@ class SettingsViewModel : ViewModel() {
     }
 
     // --- Network Settings ---
+    fun setEnableOnlineFeatures(enabled: Boolean) {
+        updateState { it.copy(enableOnlineFeatures = enabled) }
+    }
+
     fun setAutoDownloadMetadata(enabled: Boolean) {
         updateState { it.copy(autoDownloadMetadata = enabled, onlineMetadataLookup = enabled) }
     }
@@ -369,6 +384,27 @@ class SettingsViewModel : ViewModel() {
 
     fun setSetupDone(done: Boolean) {
         updateState { it.copy(setupDone = done) }
+    }
+
+    // --- Home Sections & Setup Card ---
+    fun setHomeSectionOrder(order: List<String>) {
+        updateState { it.copy(homeSectionOrder = order) }
+    }
+
+    fun setHomeSectionEnabled(sectionId: String, enabled: Boolean) {
+        updateState {
+            val disabled = it.disabledHomeSections.toMutableSet()
+            if (enabled) {
+                disabled.remove(sectionId)
+            } else {
+                disabled.add(sectionId)
+            }
+            it.copy(disabledHomeSections = disabled)
+        }
+    }
+
+    fun dismissMissingSetupCard() {
+        updateState { it.copy(missingSetupCardDismissedTimestamp = System.currentTimeMillis()) }
     }
 
     fun resetToDefaults() {

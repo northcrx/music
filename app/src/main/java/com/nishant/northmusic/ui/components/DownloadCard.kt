@@ -152,9 +152,11 @@ fun DownloadCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (item.status == DownloadStatus.DOWNLOADING) {
+                    if (item.status == DownloadStatus.DOWNLOADING || item.status == DownloadStatus.QUEUED) {
                         val subText = if (item.isPaused) {
                             "Paused"
+                        } else if (item.status == DownloadStatus.QUEUED) {
+                            "Queued"
                         } else {
                             val percent = (item.progress * 100).toInt()
                             "$percent% · ${item.speedText}"
@@ -196,7 +198,7 @@ fun DownloadCard(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                DownloadStatus.DOWNLOADING -> {
+                DownloadStatus.DOWNLOADING, DownloadStatus.QUEUED -> {
                     if (item.isPaused) {
                         // Paused row: grey ring, play icon
                         ProgressRingIconButton(
@@ -211,7 +213,7 @@ fun DownloadCard(
                             contentDescription = "Resume"
                         )
                     } else {
-                        // Active row: accent ring, pause icon
+                        // Active or queued row
                         ProgressRingIconButton(
                             progress = item.progress,
                             icon = Icons.Rounded.Pause,
@@ -219,8 +221,16 @@ fun DownloadCard(
                             size = 40.dp,
                             strokeWidth = 3.dp,
                             iconSize = 20.dp,
-                            contentColor = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                            contentColor = if (item.status == DownloadStatus.QUEUED) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                            trackColor = if (item.status == DownloadStatus.QUEUED) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.20f)
+                            } else {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                            },
                             contentDescription = "Pause"
                         )
                     }
@@ -255,7 +265,7 @@ fun DownloadCard(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false }
                 ) {
-                    if (item.status == DownloadStatus.DOWNLOADING) {
+                    if (item.status == DownloadStatus.DOWNLOADING || item.status == DownloadStatus.QUEUED) {
                         DropdownMenuItem(
                             text = { Text(if (item.isPaused) "Resume" else "Pause") },
                             onClick = {

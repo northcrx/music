@@ -5,7 +5,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nishant.northmusic.data.local.LocalStatsDatabase
 import com.nishant.northmusic.data.model.Album
+import com.nishant.northmusic.data.model.Artist
 import com.nishant.northmusic.data.model.Song
+import com.nishant.northmusic.data.network.OnlineTrack
+import com.nishant.northmusic.data.network.ResolvedTrackInfo
 import com.nishant.northmusic.data.repository.MusicRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +25,7 @@ data class HomeUiState(
     val favorites: List<Song> = emptyList(),
     val yourMusic: List<Song> = emptyList(),
     val albums: List<Album> = emptyList(),
+    val artists: List<Artist> = emptyList(),
     val isScanning: Boolean = false
 )
 
@@ -33,15 +37,67 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    // Persistent Search State across navigation and player expansion
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchCategory = MutableStateFlow("Songs")
+    val searchCategory: StateFlow<String> = _searchCategory.asStateFlow()
+
+    private val _onlineTracks = MutableStateFlow<List<OnlineTrack>>(emptyList())
+    val onlineTracks: StateFlow<List<OnlineTrack>> = _onlineTracks.asStateFlow()
+
+    private val _isOnlineSearching = MutableStateFlow(false)
+    val isOnlineSearching: StateFlow<Boolean> = _isOnlineSearching.asStateFlow()
+
+    private val _resolvedUrlTrack = MutableStateFlow<ResolvedTrackInfo?>(null)
+    val resolvedUrlTrack: StateFlow<ResolvedTrackInfo?> = _resolvedUrlTrack.asStateFlow()
+
+    private val _isResolvingUrl = MutableStateFlow(false)
+    val isResolvingUrl: StateFlow<Boolean> = _isResolvingUrl.asStateFlow()
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun updateSearchCategory(category: String) {
+        _searchCategory.value = category
+    }
+
+    fun updateOnlineTracks(tracks: List<OnlineTrack>) {
+        _onlineTracks.value = tracks
+    }
+
+    fun updateIsOnlineSearching(searching: Boolean) {
+        _isOnlineSearching.value = searching
+    }
+
+    fun updateResolvedUrlTrack(track: ResolvedTrackInfo?) {
+        _resolvedUrlTrack.value = track
+    }
+
+    fun updateIsResolvingUrl(resolving: Boolean) {
+        _isResolvingUrl.value = resolving
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = ""
+        _onlineTracks.value = emptyList()
+        _resolvedUrlTrack.value = null
+        _isOnlineSearching.value = false
+        _isResolvingUrl.value = false
+    }
+
     init {
         viewModelScope.launch {
             combine(
                 musicRepo.songs,
                 musicRepo.albums,
+                musicRepo.artists,
                 musicRepo.isScanning,
                 statsDb.statsVersion
-            ) { songs, albums, isScanning, _ ->
-                computeHomeSections(songs, albums, isScanning)
+            ) { songs, albums, artists, isScanning, _ ->
+                computeHomeSections(songs, albums, artists, isScanning)
             }.collect {}
         }
     }
@@ -49,6 +105,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun computeHomeSections(
         songs: List<Song>,
         albums: List<Album>,
+        artists: List<Artist>,
         isScanning: Boolean
     ) {
         if (songs.isEmpty()) {
@@ -61,6 +118,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     favorites = emptyList(),
                     yourMusic = emptyList(),
                     albums = emptyList(),
+                    artists = emptyList(),
                     isScanning = isScanning
                 )
             }
@@ -101,6 +159,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 favorites = favorites,
                 yourMusic = songs,
                 albums = albums,
+                artists = artists,
                 isScanning = isScanning
             )
         }

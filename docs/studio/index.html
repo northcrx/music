@@ -1,0 +1,1960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STUDIO — Sound, without the noise.</title>
+    <meta name="description" content="Lossless records, tiny desk sessions and artist radio — one quiet place to listen properly.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+
+    <!-- Favicon: Purple Squircle with Waveform -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%236366F1'/%3E%3Crect x='8' y='14' width='3.5' height='12' rx='1.75' fill='white'/%3E%3Crect x='14' y='9' width='3.5' height='22' rx='1.75' fill='white'/%3E%3Crect x='20' y='6' width='3.5' height='28' rx='1.75' fill='white'/%3E%3Crect x='26' y='12' width='3.5' height='16' rx='1.75' fill='white'/%3E%3Crect x='32' y='15' width='3.5' height='10' rx='1.75' fill='white'/%3E%3C/svg%3E">
+
+    <style>
+        :root {
+            --primary-purple: #6366f1;
+            --primary-purple-dark: #4f46e5;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            --bg-body: #ffffff;
+            --bg-soft: #f8fafc;
+            --bg-card: #ffffff;
+            --border-subtle: #e2e8f0;
+            --border-hover: #cbd5e1;
+            --shadow-card: 0 20px 40px -15px rgba(0, 0, 0, 0.07);
+            --shadow-float: 0 12px 30px -6px rgba(0, 0, 0, 0.12);
+            --radius-pill: 9999px;
+            --radius-squircle: 36px;
+            --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-display: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            padding-bottom: 96px; /* space for fixed player bar */
+            overflow-x: hidden;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Top Bar / Navigation */
+        header.site-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+            transition: all 0.3s ease;
+        }
+
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 76px;
+        }
+
+        /* Brand Logo */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            background: #6366f1;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+            transition: transform 0.2s ease;
+        }
+
+        .brand:hover .brand-icon {
+            transform: scale(1.04);
+        }
+
+        .brand-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .brand-title {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 20px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #0f172a;
+        }
+
+        /* Nav Links */
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 36px;
+            list-style: none;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #475569;
+            font-size: 15px;
+            font-weight: 500;
+            transition: color 0.15s ease;
+            position: relative;
+            padding: 6px 2px;
+        }
+
+        .nav-link:hover {
+            color: #0f172a;
+        }
+
+        .nav-link.active {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary-purple);
+            border-radius: 2px;
+        }
+
+        /* Sign In Button */
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-signin {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            color: #0f172a;
+            border: none;
+            font-family: var(--font-main);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 14px;
+            border-radius: var(--radius-pill);
+            transition: all 0.2s ease;
+        }
+
+        .btn-signin:hover {
+            background: #f1f5f9;
+            color: var(--primary-purple-dark);
+        }
+
+        .btn-signin svg {
+            width: 18px;
+            height: 18px;
+            stroke-width: 2.2;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-signin:hover svg {
+            transform: translateX(3px);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            padding: 64px 0 80px 0;
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.08fr 0.92fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        /* Hero Left Column */
+        .hero-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary-purple);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        .headline {
+            font-family: var(--font-display);
+            font-size: 58px;
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -0.03em;
+            color: #0f172a;
+        }
+
+        .subheadline {
+            font-size: 19px;
+            line-height: 1.55;
+            color: #475569;
+            max-width: 480px;
+            margin-top: 2px;
+        }
+
+        /* Hero CTA Buttons */
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 14px 28px;
+            border-radius: var(--radius-pill);
+            text-decoration: none;
+            border: 1px solid #0f172a;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15);
+        }
+
+        .btn-primary:hover {
+            background: #1e293b;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.22);
+        }
+
+        .btn-primary svg {
+            width: 17px;
+            height: 17px;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-primary:hover svg {
+            transform: translateX(4px);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+            color: #0f172a;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 14px 28px;
+            border-radius: var(--radius-pill);
+            text-decoration: none;
+            border: 1.5px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+
+        /* Trust & Feature Badges */
+        .trust-badges {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 13.5px;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .trust-check {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #10b981; /* emerald check */
+        }
+
+        .trust-check svg {
+            width: 15px;
+            height: 15px;
+            stroke-width: 2.5;
+        }
+
+        /* Hero Right Column: Gradient Visual Squircle Card */
+        .hero-visual {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .gradient-card {
+            width: 100%;
+            max-width: 490px;
+            aspect-ratio: 1 / 1;
+            border-radius: var(--radius-squircle);
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 32%, #ec4899 68%, #f97316 100%);
+            position: relative;
+            box-shadow: 0 25px 60px -15px rgba(99, 102, 241, 0.4), 0 10px 25px -10px rgba(236, 72, 153, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+            cursor: pointer;
+        }
+
+        .gradient-card:hover {
+            transform: scale(1.015);
+            box-shadow: 0 30px 70px -12px rgba(99, 102, 241, 0.48), 0 15px 35px -8px rgba(236, 72, 153, 0.38);
+        }
+
+        /* Subtle Ambient Glow inside gradient */
+        .gradient-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 75% 25%, rgba(255, 255, 255, 0.28) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        /* Interactive Center Vinyl / Waves on the Card */
+        .card-center-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 2;
+            color: #ffffff;
+            transition: transform 0.25s ease;
+        }
+
+        .gradient-card:hover .card-center-action {
+            transform: scale(1.06);
+        }
+
+        .card-play-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+            color: #0f172a;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .card-play-btn svg {
+            width: 30px;
+            height: 30px;
+            margin-left: 3px; /* visual center for play triangle */
+            fill: #0f172a;
+        }
+
+        .card-play-label {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.25);
+            padding: 4px 14px;
+            border-radius: var(--radius-pill);
+            backdrop-filter: blur(6px);
+        }
+
+        /* Floating Pill Badges (Exact from Screenshot) */
+        .floating-pill {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: var(--radius-pill);
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #1e293b;
+            box-shadow: 0 14px 28px -6px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            z-index: 10;
+            pointer-events: auto;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .floating-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 18px 34px -6px rgba(0, 0, 0, 0.16);
+        }
+
+        /* Top-Left Floating Badge: Lossless · 24-bit */
+        .pill-lossless {
+            top: 28px;
+            left: 28px;
+        }
+
+        .pill-lossless svg {
+            width: 17px;
+            height: 17px;
+            color: var(--primary-purple);
+        }
+
+        /* Bottom-Right Floating Badge: 12,400 artists */
+        .pill-artists {
+            bottom: 28px;
+            right: 28px;
+        }
+
+        .pill-artists svg {
+            width: 16px;
+            height: 16px;
+            color: #eab308; /* vibrant star gold */
+            fill: #eab308;
+        }
+
+        /* Section 2: Fresh This Week */
+        .section-fresh {
+            padding: 40px 0 70px 0;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .section-header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 28px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+
+        .section-filter-chips {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .chip {
+            padding: 7px 16px;
+            border-radius: var(--radius-pill);
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 13.5px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .chip:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .chip.active {
+            background: #0f172a;
+            color: #ffffff;
+        }
+
+        /* Fresh Tracks Grid */
+        .tracks-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .track-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border-subtle);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            cursor: pointer;
+        }
+
+        .track-card:hover {
+            transform: translateY(-4px);
+            border-color: #cbd5e1;
+            box-shadow: var(--shadow-card);
+        }
+
+        .card-art-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+
+        .card-art-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.35s ease;
+        }
+
+        .track-card:hover .card-art-img {
+            transform: scale(1.05);
+        }
+
+        /* Play Button Overlay on Card */
+        .card-play-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            backdrop-filter: blur(2px);
+        }
+
+        .track-card:hover .card-play-overlay,
+        .track-card.is-playing .card-play-overlay {
+            opacity: 1;
+        }
+
+        .overlay-play-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #ffffff;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .overlay-play-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .overlay-play-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #0f172a;
+            margin-left: 2px;
+        }
+
+        .card-badge-flac {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            color: #ffffff;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-artist {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .card-session-tag {
+            color: var(--primary-purple);
+            font-weight: 600;
+        }
+
+        /* Section 3: Live Radio & Artists Strip */
+        .section-radio {
+            padding: 40px 0 60px 0;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .radio-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .radio-card {
+            border-radius: 20px;
+            padding: 24px;
+            background: #f8fafc;
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .radio-card:hover {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            box-shadow: var(--shadow-card);
+            transform: translateY(-2px);
+        }
+
+        .radio-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .radio-pill-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: var(--radius-pill);
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse-red 1.6s infinite ease-in-out;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.8; }
+        }
+
+        .radio-title {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .radio-desc {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .radio-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px dashed #e2e8f0;
+        }
+
+        .radio-format {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .radio-tune-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--primary-purple);
+            font-size: 13px;
+            font-weight: 700;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Banner to Download NorthMusic Android App */
+        .android-banner {
+            margin: 40px 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            border-radius: 24px;
+            padding: 32px 40px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .android-banner-text h3 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .android-banner-text p {
+            color: #94a3b8;
+            font-size: 14.5px;
+        }
+
+        .btn-download-apk {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #6366f1;
+            color: #ffffff;
+            font-size: 14.5px;
+            font-weight: 700;
+            padding: 12px 24px;
+            border-radius: var(--radius-pill);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 18px rgba(99, 102, 241, 0.4);
+            white-space: nowrap;
+        }
+
+        .btn-download-apk:hover {
+            background: #4f46e5;
+            transform: translateY(-2px);
+        }
+
+        /* Fixed Bottom Music Player Bar */
+        .player-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 84px;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(226, 232, 240, 0.85);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        .player-inner {
+            display: grid;
+            grid-template-columns: 280px 1fr 260px;
+            align-items: center;
+            width: 100%;
+            gap: 24px;
+        }
+
+        /* Player Left: Current Track */
+        .player-track {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .player-thumb {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            background: #6366f1;
+            overflow: hidden;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .player-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .player-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .player-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-artist {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .badge-flac-mini {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #6366f1;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            width: fit-content;
+            margin-top: 2px;
+        }
+
+        /* Player Center: Controls & Timeline */
+        .player-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            max-width: 580px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.15s ease;
+        }
+
+        .control-btn:hover {
+            color: #0f172a;
+            background: #f1f5f9;
+        }
+
+        .btn-play-main {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #0f172a;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+        }
+
+        .btn-play-main:hover {
+            background: #1e293b;
+            transform: scale(1.05);
+        }
+
+        .btn-play-main svg {
+            width: 18px;
+            height: 18px;
+            fill: #ffffff;
+        }
+
+        .player-timeline-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .time-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            min-width: 34px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .seek-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: #e2e8f0;
+            outline: none;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .seek-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #0f172a;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .seek-slider:hover::-webkit-slider-thumb {
+            transform: scale(1.25);
+            background: var(--primary-purple);
+        }
+
+        /* Player Right: Volume */
+        .player-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 14px;
+        }
+
+        .vol-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 90px;
+            height: 4px;
+            border-radius: 2px;
+            background: #e2e8f0;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #64748b;
+            cursor: pointer;
+        }
+
+        /* Sign In Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            padding: 20px;
+        }
+
+        .modal-backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #ffffff;
+            border-radius: 28px;
+            width: 100%;
+            max-width: 420px;
+            padding: 36px 32px;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            transform: translateY(12px) scale(0.98);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-backdrop.open .modal-card {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #f1f5f9;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .modal-close:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-logo {
+            width: 48px;
+            height: 48px;
+            background: #6366f1;
+            border-radius: 14px;
+            margin: 0 auto 16px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+        }
+
+        .modal-title {
+            font-family: var(--font-display);
+            font-size: 24px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .modal-sub {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 13px 18px;
+            border-radius: 12px;
+            border: 1.5px solid #e2e8f0;
+            font-size: 14.5px;
+            font-family: var(--font-main);
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary-purple);
+        }
+
+        .btn-modal-submit {
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            border-radius: var(--radius-pill);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 4px;
+        }
+
+        .btn-modal-submit:hover {
+            background: #1e293b;
+        }
+
+        /* Footer */
+        footer.site-footer {
+            border-top: 1px solid var(--border-subtle);
+            padding: 48px 0;
+            color: var(--text-muted);
+            font-size: 13.5px;
+        }
+
+        .footer-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        .footer-links a:hover {
+            color: #0f172a;
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 980px) {
+            .hero-grid {
+                grid-template-columns: 1fr;
+                gap: 48px;
+                text-align: center;
+            }
+
+            .hero-content {
+                align-items: center;
+            }
+
+            .headline {
+                font-size: 44px;
+            }
+
+            .subheadline {
+                max-width: 100%;
+            }
+
+            .hero-actions, .trust-badges {
+                justify-content: center;
+            }
+
+            .tracks-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .radio-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .player-inner {
+                grid-template-columns: 1fr auto;
+            }
+
+            .player-center {
+                display: none; /* simple mode on small screens */
+            }
+        }
+
+        @media (max-width: 640px) {
+            .nav-links {
+                display: none;
+            }
+
+            .headline {
+                font-size: 36px;
+            }
+
+            .floating-pill {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+
+            .pill-lossless {
+                top: 16px;
+                left: 16px;
+            }
+
+            .pill-artists {
+                bottom: 16px;
+                right: 16px;
+            }
+
+            .tracks-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .android-banner {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="site-header">
+        <div class="container">
+            <div class="nav-inner">
+                <!-- Brand / Logo -->
+                <a href="#hero" class="brand">
+                    <div class="brand-icon">
+                        <!-- Waveform 5 bars -->
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="2" y="8" width="2.4" height="8" rx="1.2" fill="white"/>
+                            <rect x="6.4" y="4" width="2.4" height="16" rx="1.2" fill="white"/>
+                            <rect x="10.8" y="2" width="2.4" height="20" rx="1.2" fill="white"/>
+                            <rect x="15.2" y="6" width="2.4" height="12" rx="1.2" fill="white"/>
+                            <rect x="19.6" y="9" width="2.4" height="6" rx="1.2" fill="white"/>
+                        </svg>
+                    </div>
+                    <span class="brand-title">STUDIO</span>
+                </a>
+
+                <!-- Nav Links -->
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="#hero" class="nav-link active">Listen</a></li>
+                        <li><a href="#fresh" class="nav-link">Artists</a></li>
+                        <li><a href="#radio" class="nav-link">Radio</a></li>
+                    </ul>
+                </nav>
+
+                <!-- Right Action: Sign In -->
+                <div class="nav-actions">
+                    <button class="btn-signin" id="btnSignIn">
+                        <span>Sign in</span>
+                        <!-- Login Arrow Icon [->] -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                            <polyline points="10 17 15 12 10 7"/>
+                            <line x1="15" y1="12" x2="3" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <main>
+        <section class="hero-section" id="hero">
+            <div class="container">
+                <div class="hero-grid">
+                    <!-- Left: Hero Text & Actions -->
+                    <div class="hero-content">
+                        <div class="eyebrow">
+                            <span>LIVE FROM THE BASEMENT</span>
+                        </div>
+                        <h1 class="headline">Sound, without the noise.</h1>
+                        <p class="subheadline">
+                            Lossless records, tiny desk sessions and artist radio — one quiet place to listen properly.
+                        </p>
+                        
+                        <!-- CTA Buttons -->
+                        <div class="hero-actions">
+                            <button class="btn-primary" id="btnStartListening">
+                                <span>Start listening</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </button>
+                            <a href="#fresh" class="btn-secondary">Browse artists</a>
+                        </div>
+
+                        <!-- Trust Badges (Exact from Screenshot) -->
+                        <div class="trust-badges">
+                            <div class="trust-item">
+                                <span class="trust-check">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </span>
+                                <span>30 days free returns</span>
+                            </div>
+                            <div class="trust-item">
+                                <span class="trust-check">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </span>
+                                <span>2-year warranty</span>
+                            </div>
+                            <div class="trust-item">
+                                <span class="trust-check">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </span>
+                                <span>Carbon neutral</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Large Gradient Visual Card with Floating Glass Badges -->
+                    <div class="hero-visual">
+                        <div class="gradient-card" id="heroGradientCard">
+                            <!-- Top-Left Floating Badge -->
+                            <div class="floating-pill pill-lossless">
+                                <!-- Soundwave / Lossless Icon -->
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 10v4"/>
+                                    <path d="M6 7v10"/>
+                                    <path d="M10 4v16"/>
+                                    <path d="M14 8v8"/>
+                                    <path d="M18 5v14"/>
+                                    <path d="M22 10v4"/>
+                                </svg>
+                                <span>Lossless · 24-bit</span>
+                            </div>
+
+                            <!-- Interactive Play Disc in Center -->
+                            <div class="card-center-action">
+                                <button class="card-play-btn" id="heroCenterPlay" aria-label="Play Live Session">
+                                    <svg viewBox="0 0 24 24">
+                                        <polygon points="5 3 19 12 5 21 5 3"/>
+                                    </svg>
+                                </button>
+                                <span class="card-play-label">Play live session</span>
+                            </div>
+
+                            <!-- Bottom-Right Floating Badge -->
+                            <div class="floating-pill pill-artists">
+                                <!-- Star Icon -->
+                                <svg viewBox="0 0 24 24">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                </svg>
+                                <span>12,400 artists</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fresh This Week Section -->
+        <section class="section-fresh" id="fresh">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-header-left">
+                        <span class="eyebrow">FRESH THIS WEEK</span>
+                        <h2 class="section-title">Lossless records & tiny desk sessions</h2>
+                    </div>
+
+                    <!-- Category Filter Chips -->
+                    <div class="section-filter-chips">
+                        <button class="chip active">All Sessions</button>
+                        <button class="chip">Basement Acoustic</button>
+                        <button class="chip">Analog Tape</button>
+                        <button class="chip">Modular Live</button>
+                    </div>
+                </div>
+
+                <!-- 4 Track Cards Grid -->
+                <div class="tracks-grid">
+                    <!-- Track 1 -->
+                    <div class="track-card" data-title="Midnight Solitude" data-artist="Luna Nova" data-bpm="74" data-tag="Basement Session #42">
+                        <div class="card-art-wrap">
+                            <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80" alt="Luna Nova" class="card-art-img">
+                            <span class="card-badge-flac">24-BIT FLAC</span>
+                            <div class="card-play-overlay">
+                                <button class="overlay-play-btn" aria-label="Play Track">
+                                    <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-info">
+                            <h3 class="card-title">Midnight Solitude</h3>
+                            <p class="card-artist">Luna Nova</p>
+                            <div class="card-meta">
+                                <span class="card-session-tag">Basement Session #42</span>
+                                <span>3:48</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Track 2 -->
+                    <div class="track-card" data-title="Velvet Horizons" data-artist="The Echo Collective" data-bpm="90" data-tag="Studio A Live">
+                        <div class="card-art-wrap">
+                            <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80" alt="The Echo Collective" class="card-art-img">
+                            <span class="card-badge-flac">96kHz MASTER</span>
+                            <div class="card-play-overlay">
+                                <button class="overlay-play-btn" aria-label="Play Track">
+                                    <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-info">
+                            <h3 class="card-title">Velvet Horizons</h3>
+                            <p class="card-artist">The Echo Collective</p>
+                            <div class="card-meta">
+                                <span class="card-session-tag">Studio A Live</span>
+                                <span>4:22</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Track 3 -->
+                    <div class="track-card" data-title="Nordic Drift" data-artist="Kaelen & Friends" data-bpm="62" data-tag="Analog 2-Track">
+                        <div class="card-art-wrap">
+                            <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80" alt="Kaelen & Friends" class="card-art-img">
+                            <span class="card-badge-flac">24-BIT FLAC</span>
+                            <div class="card-play-overlay">
+                                <button class="overlay-play-btn" aria-label="Play Track">
+                                    <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-info">
+                            <h3 class="card-title">Nordic Drift</h3>
+                            <p class="card-artist">Kaelen & Friends</p>
+                            <div class="card-meta">
+                                <span class="card-session-tag">Analog 2-Track</span>
+                                <span>5:10</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Track 4 -->
+                    <div class="track-card" data-title="Electric Dawn" data-artist="Pulse Architecture" data-bpm="110" data-tag="Modular Desk">
+                        <div class="card-art-wrap">
+                            <img src="https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=600&q=80" alt="Pulse Architecture" class="card-art-img">
+                            <span class="card-badge-flac">HI-RES AUDIO</span>
+                            <div class="card-play-overlay">
+                                <button class="overlay-play-btn" aria-label="Play Track">
+                                    <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-info">
+                            <h3 class="card-title">Electric Dawn</h3>
+                            <p class="card-artist">Pulse Architecture</p>
+                            <div class="card-meta">
+                                <span class="card-session-tag">Modular Desk</span>
+                                <span>3:55</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Studio Radio Section -->
+        <section class="section-radio" id="radio">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-header-left">
+                        <span class="eyebrow">CONTINUOUS BROADCAST</span>
+                        <h2 class="section-title">24/7 Artist Radio Streams</h2>
+                    </div>
+                </div>
+
+                <div class="radio-grid">
+                    <!-- Station 1 -->
+                    <div class="radio-card" data-title="Basement Lo-Fi & Tape" data-artist="STUDIO Radio Channel 1" data-bpm="70">
+                        <div class="radio-card-header">
+                            <span class="radio-pill-live">
+                                <span class="live-dot"></span>
+                                Live Now
+                            </span>
+                            <span style="font-size: 12px; color: #64748b; font-weight: 600;">3,420 listening</span>
+                        </div>
+                        <div>
+                            <h3 class="radio-title">Basement Lo-Fi & Tape</h3>
+                            <p class="radio-desc">Uncompressed cassette rips, intimate bedroom takes and warm analog warmth.</p>
+                        </div>
+                        <div class="radio-footer">
+                            <span class="radio-format">Lossless FLAC • 24-bit</span>
+                            <button class="radio-tune-btn">Tune in →</button>
+                        </div>
+                    </div>
+
+                    <!-- Station 2 -->
+                    <div class="radio-card" data-title="Acoustic & String Sessions" data-artist="STUDIO Radio Channel 2" data-bpm="80">
+                        <div class="radio-card-header">
+                            <span class="radio-pill-live">
+                                <span class="live-dot"></span>
+                                Live Now
+                            </span>
+                            <span style="font-size: 12px; color: #64748b; font-weight: 600;">1,890 listening</span>
+                        </div>
+                        <div>
+                            <h3 class="radio-title">Acoustic & Strings</h3>
+                            <p class="radio-desc">Recorded with vintage ribbon microphones in small wood-paneled rooms.</p>
+                        </div>
+                        <div class="radio-footer">
+                            <span class="radio-format">96kHz Master • 24-bit</span>
+                            <button class="radio-tune-btn">Tune in →</button>
+                        </div>
+                    </div>
+
+                    <!-- Station 3 -->
+                    <div class="radio-card" data-title="Modular Synth & Ambient" data-artist="STUDIO Radio Channel 3" data-bpm="95">
+                        <div class="radio-card-header">
+                            <span class="radio-pill-live">
+                                <span class="live-dot"></span>
+                                Live Now
+                            </span>
+                            <span style="font-size: 12px; color: #64748b; font-weight: 600;">2,640 listening</span>
+                        </div>
+                        <div>
+                            <h3 class="radio-title">Late Night Modular</h3>
+                            <p class="radio-desc">Generative synth patches, lush delays, and peaceful nocturnal textures.</p>
+                        </div>
+                        <div class="radio-footer">
+                            <span class="radio-format">Lossless FLAC • 24-bit</span>
+                            <button class="radio-tune-btn">Tune in →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Android App Download Banner -->
+                <div class="android-banner">
+                    <div class="android-banner-text">
+                        <h3>Prefer listening on your Android phone?</h3>
+                        <p>Get North Music v0.2 — Native 320k streaming, automatic category organizer, offline downloader & equalizer.</p>
+                    </div>
+                    <a href="../NorthMusic-v0.2.apk" class="btn-download-apk" download>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <span>Download NorthMusic APK (v0.2)</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-inner">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="brand-icon" style="width: 24px; height: 24px; border-radius: 6px;">
+                        <svg viewBox="0 0 24 24" fill="none" style="width: 14px; height: 14px;">
+                            <rect x="3" y="9" width="2" height="6" rx="1" fill="white"/>
+                            <rect x="7" y="5" width="2" height="14" rx="1" fill="white"/>
+                            <rect x="11" y="2" width="2" height="20" rx="1" fill="white"/>
+                            <rect x="15" y="7" width="2" height="10" rx="1" fill="white"/>
+                            <rect x="19" y="10" width="2" height="4" rx="1" fill="white"/>
+                        </svg>
+                    </div>
+                    <span>&copy; 2026 STUDIO Audio Inc. All rights reserved.</span>
+                </div>
+                <ul class="footer-links">
+                    <li><a href="#hero">Privacy</a></li>
+                    <li><a href="#hero">Terms</a></li>
+                    <li><a href="../index.html">North Music Android App</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Fixed Bottom Music Player Bar -->
+    <div class="player-bar" id="playerBar">
+        <div class="container">
+            <div class="player-inner">
+                <!-- Left: Track info -->
+                <div class="player-track">
+                    <div class="player-thumb">
+                        <img id="playerThumb" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=200&q=80" alt="Now Playing">
+                    </div>
+                    <div class="player-info">
+                        <span class="player-title" id="playerTitle">Midnight Solitude</span>
+                        <span class="player-artist" id="playerArtist">Luna Nova</span>
+                        <span class="badge-flac-mini">24-BIT / 96kHz LOSSLESS</span>
+                    </div>
+                </div>
+
+                <!-- Center: Transport & Progress -->
+                <div class="player-center">
+                    <div class="player-controls">
+                        <!-- Prev -->
+                        <button class="control-btn" id="btnPrev" aria-label="Previous">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="19 20 9 12 19 4 19 20"/>
+                                <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        <!-- Main Play/Pause -->
+                        <button class="btn-play-main" id="btnPlayMain" aria-label="Play/Pause">
+                            <svg id="playIconSvg" viewBox="0 0 24 24">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                        </button>
+                        <!-- Next -->
+                        <button class="control-btn" id="btnNext" aria-label="Next">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="5 4 15 12 5 20 5 4"/>
+                                <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Timeline seek -->
+                    <div class="player-timeline-row">
+                        <span class="time-text" id="timeCurrent">0:00</span>
+                        <input type="range" class="seek-slider" id="seekSlider" min="0" max="100" value="0">
+                        <span class="time-text" id="timeTotal">3:48</span>
+                    </div>
+                </div>
+
+                <!-- Right: Volume & Format -->
+                <div class="player-right">
+                    <button class="control-btn" id="btnMute" aria-label="Mute">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                    </button>
+                    <input type="range" class="vol-slider" id="volSlider" min="0" max="1" step="0.01" value="0.85">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sign In Modal -->
+    <div class="modal-backdrop" id="signInModal">
+        <div class="modal-card">
+            <button class="modal-close" id="modalClose" aria-label="Close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <svg viewBox="0 0 24 24" fill="none" style="width: 26px; height: 26px;">
+                        <rect x="2" y="8" width="2.4" height="8" rx="1.2" fill="white"/>
+                        <rect x="6.4" y="4" width="2.4" height="16" rx="1.2" fill="white"/>
+                        <rect x="10.8" y="2" width="2.4" height="20" rx="1.2" fill="white"/>
+                        <rect x="15.2" y="6" width="2.4" height="12" rx="1.2" fill="white"/>
+                        <rect x="19.6" y="9" width="2.4" height="6" rx="1.2" fill="white"/>
+                    </svg>
+                </div>
+                <h3 class="modal-title">Sign in to STUDIO</h3>
+                <p class="modal-sub">Listen to your saved live sessions, vinyl rips and lossless favorites anywhere.</p>
+            </div>
+            <form class="modal-form" id="signInForm" onsubmit="event.preventDefault(); alert('Signed in as demo listener!'); document.getElementById('signInModal').classList.remove('open');">
+                <input type="email" class="form-input" placeholder="name@example.com" required>
+                <input type="password" class="form-input" placeholder="Password" required>
+                <button type="submit" class="btn-modal-submit">Continue to STUDIO</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Interactive Audio Playback Script (Web Audio Synthesizer Engine) -->
+    <script>
+        // Web Audio API ambient music synthesizer for instant interactive playback
+        let audioCtx = null;
+        let isPlaying = false;
+        let currentTimer = null;
+        let currentTimeSec = 0;
+        const totalDurationSec = 228; // 3:48
+
+        // Elements
+        const btnPlayMain = document.getElementById('btnPlayMain');
+        const playIconSvg = document.getElementById('playIconSvg');
+        const heroCenterPlay = document.getElementById('heroCenterPlay');
+        const btnStartListening = document.getElementById('btnStartListening');
+        const seekSlider = document.getElementById('seekSlider');
+        const timeCurrent = document.getElementById('timeCurrent');
+        const timeTotal = document.getElementById('timeTotal');
+        const volSlider = document.getElementById('volSlider');
+        const btnMute = document.getElementById('btnMute');
+        const playerTitle = document.getElementById('playerTitle');
+        const playerArtist = document.getElementById('playerArtist');
+        const playerThumb = document.getElementById('playerThumb');
+        const trackCards = document.querySelectorAll('.track-card');
+        const radioCards = document.querySelectorAll('.radio-card');
+        const signInModal = document.getElementById('signInModal');
+        const btnSignIn = document.getElementById('btnSignIn');
+        const modalClose = document.getElementById('modalClose');
+
+        // Master Gain
+        let masterGain = null;
+        let ambientOscs = [];
+        let chordInterval = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.setValueAtTime(parseFloat(volSlider.value), audioCtx.currentTime);
+                masterGain.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Generate warm, musical chords (E minor9 / A sus / C maj7)
+        const chords = [
+            [164.81, 196.00, 246.94, 293.66, 392.00], // E minor 9
+            [174.61, 220.00, 261.63, 329.63, 392.00], // F maj 7
+            [146.83, 220.00, 293.66, 329.63, 440.00], // D sus2
+            [130.81, 196.00, 261.63, 329.63, 392.00]  // C maj 7
+        ];
+        let chordIndex = 0;
+
+        function startSynthAudio() {
+            initAudio();
+            stopSynthAudio();
+
+            function playChordStep() {
+                if (!isPlaying) return;
+                const freqs = chords[chordIndex % chords.length];
+                chordIndex++;
+
+                freqs.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    const filter = audioCtx.createBiquadFilter();
+
+                    osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(800 + Math.random() * 400, audioCtx.currentTime);
+
+                    const now = audioCtx.currentTime;
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.exponentialRampToValueAtTime(0.06 / freqs.length, now + 1.2);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 4.8);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(masterGain);
+
+                    osc.start(now);
+                    osc.stop(now + 5.0);
+                    ambientOscs.push(osc);
+                });
+            }
+
+            playChordStep();
+            chordInterval = setInterval(playChordStep, 4500);
+        }
+
+        function stopSynthAudio() {
+            if (chordInterval) {
+                clearInterval(chordInterval);
+                chordInterval = null;
+            }
+            ambientOscs.forEach(osc => {
+                try { osc.stop(); } catch (e) {}
+            });
+            ambientOscs = [];
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function updatePlayIcon(playing) {
+            if (playing) {
+                playIconSvg.innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+            } else {
+                playIconSvg.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+            }
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                isPlaying = false;
+                stopSynthAudio();
+                clearInterval(currentTimer);
+                updatePlayIcon(false);
+            } else {
+                isPlaying = true;
+                startSynthAudio();
+                updatePlayIcon(true);
+                currentTimer = setInterval(() => {
+                    currentTimeSec++;
+                    if (currentTimeSec > totalDurationSec) currentTimeSec = 0;
+                    timeCurrent.textContent = formatTime(currentTimeSec);
+                    seekSlider.value = (currentTimeSec / totalDurationSec) * 100;
+                }, 1000);
+            }
+        }
+
+        btnPlayMain.addEventListener('click', togglePlay);
+        heroCenterPlay.addEventListener('click', togglePlay);
+        btnStartListening.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!isPlaying) togglePlay();
+        });
+
+        // Track Card selection
+        trackCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const title = card.getAttribute('data-title');
+                const artist = card.getAttribute('data-artist');
+                const img = card.querySelector('.card-art-img').src;
+
+                playerTitle.textContent = title;
+                playerArtist.textContent = artist;
+                playerThumb.src = img;
+                currentTimeSec = 0;
+                timeCurrent.textContent = "0:00";
+                seekSlider.value = 0;
+
+                trackCards.forEach(c => c.classList.remove('is-playing'));
+                card.classList.add('is-playing');
+
+                if (!isPlaying) togglePlay();
+            });
+        });
+
+        // Radio Cards
+        radioCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const title = card.getAttribute('data-title');
+                const artist = card.getAttribute('data-artist');
+
+                playerTitle.textContent = title;
+                playerArtist.textContent = artist;
+                currentTimeSec = 0;
+                timeCurrent.textContent = "0:00";
+                seekSlider.value = 0;
+
+                if (!isPlaying) togglePlay();
+            });
+        });
+
+        // Seek
+        seekSlider.addEventListener('input', () => {
+            currentTimeSec = Math.floor((seekSlider.value / 100) * totalDurationSec);
+            timeCurrent.textContent = formatTime(currentTimeSec);
+        });
+
+        // Volume
+        volSlider.addEventListener('input', () => {
+            if (masterGain && audioCtx) {
+                masterGain.gain.setValueAtTime(parseFloat(volSlider.value), audioCtx.currentTime);
+            }
+        });
+
+        btnMute.addEventListener('click', () => {
+            if (!masterGain) return;
+            if (volSlider.value > 0) {
+                volSlider.dataset.prev = volSlider.value;
+                volSlider.value = 0;
+                masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            } else {
+                volSlider.value = volSlider.dataset.prev || 0.85;
+                masterGain.gain.setValueAtTime(parseFloat(volSlider.value), audioCtx.currentTime);
+            }
+        });
+
+        // Modal Sign In
+        btnSignIn.addEventListener('click', () => {
+            signInModal.classList.add('open');
+        });
+
+        modalClose.addEventListener('click', () => {
+            signInModal.classList.remove('open');
+        });
+
+        signInModal.addEventListener('click', (e) => {
+            if (e.target === signInModal) signInModal.classList.remove('open');
+        });
+    </script>
+</body>
+</html>

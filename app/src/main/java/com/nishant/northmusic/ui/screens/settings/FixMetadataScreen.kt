@@ -25,7 +25,9 @@ import androidx.compose.material.icons.rounded.AutoFixHigh
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,6 +37,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -62,17 +65,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.nishant.northmusic.data.network.MetadataConfidence
 import com.nishant.northmusic.data.network.MetadataIssueType
 import com.nishant.northmusic.data.network.MetadataSuggestion
 import com.nishant.northmusic.data.network.MetadataSuggestionService
+import com.nishant.northmusic.data.network.ScanProgress
 import com.nishant.northmusic.data.repository.MusicRepository
 import com.nishant.northmusic.navigation.BottomListScrollPadding
 import com.nishant.northmusic.ui.components.AsyncSongArtwork
 import com.nishant.northmusic.ui.theme.PillShape
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,22 +90,47 @@ fun FixMetadataScreen(
     val musicRepo = MusicRepository.getInstance(context)
     val songs by musicRepo.songs.collectAsState()
 
-    var isScanning by remember { mutableStateOf(true) }
+    var isScanning by remember { mutableStateOf(false) }
     var isApplyingAll by remember { mutableStateOf(false) }
+    var scanProgress by remember { mutableStateOf<ScanProgress?>(null) }
     val suggestions = remember { mutableStateListOf<MetadataSuggestion>() }
+    val cancelFlag = remember { AtomicBoolean(false) }
+    var scanJob by remember { mutableStateOf<Job?>(null) }
 
-    fun runScan() {
+    fun stopScan() {
+        cancelFlag.set(true)
+        scanJob?.cancel()
+        isScanning = false
+    }
+
+    fun startScan() {
+        stopScan()
+        cancelFlag.set(false)
         isScanning = true
         suggestions.clear()
-        scope.launch(Dispatchers.IO) {
-            val list = MetadataSuggestionService.analyzeAndFetchSuggestions(context, songs)
-            suggestions.addAll(list)
+        scanProgress = null
+
+        scanJob = scope.launch(Dispatchers.IO) {
+            MetadataSuggestionService.analyzeAndFetchSuggestionsStreaming(
+                context = context,
+                songs = if (songs.isNotEmpty()) songs else musicRepo.songs.value,
+                onProgress = { progress ->
+                    scanProgress = progress
+                },
+                onSuggestionFound = { suggestion ->
+                    // Add suggestion live to the list
+                    if (suggestions.none { it.song.id == suggestion.song.id }) {
+                        suggestions.add(suggestion)
+                    }
+                },
+                isCancelled = { cancelFlag.get() }
+            )
             isScanning = false
         }
     }
 
     LaunchedEffect(Unit) {
-        runScan()
+        startScan()
     }
 
     val activeSuggestions = suggestions.filter { !it.isApplied && !it.isSkipped }
@@ -122,7 +152,13 @@ fun FixMetadataScreen(
                 )
             },
             navigationIcon = {
-                IconButton(onClick = onNavigateBack, modifier = Modifier.size(48.dp)) {
+                IconButton(
+                    onClick = {
+                        stopScan()
+                        onNavigateBack()
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
@@ -131,7 +167,10 @@ fun FixMetadataScreen(
                 }
             },
             actions = {
-                IconButton(onClick = { runScan() }, enabled = !isScanning && !isApplyingAll) {
+                IconButton(
+                    onClick = { startScan() },
+                    enabled = !isScanning && !isApplyingAll
+                ) {
                     Icon(
                         imageVector = Icons.Rounded.Refresh,
                         contentDescription = "Rescan",
@@ -143,26 +182,77 @@ fun FixMetadataScreen(
         )
 
         when {
-            isScanning -> {
+            // Initial scanning with 0 items found yet
+            isScanning && suggestions.isEmpty() -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                        Text(
-                            text = "Analyzing library & querying iTunes...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(44.dp)
+                            )
+                            val progress = scanProgress
+                            if (progress != null && progress.total > 0) {
+                                Text(
+                                    text = "Analyzing candidate songs (${progress.current}/${progress.total})",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = progress.currentSongTitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                LinearProgressIndicator(
+                                    progress = { progress.current.toFloat() / progress.total.toFloat() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(3.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
+                            } else {
+                                Text(
+                                    text = "Scanning library for missing tags & artwork...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            OutlinedButton(
+                                onClick = { stopScan() },
+                                shape = PillShape
+                            ) {
+                                Icon(Icons.Rounded.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Stop scanning")
+                            }
+                        }
                     }
                 }
             }
 
-            activeSuggestions.isEmpty() -> {
+            // Finished scanning and no issues found
+            !isScanning && activeSuggestions.isEmpty() -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -186,21 +276,82 @@ fun FixMetadataScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "All songs in your library have complete titles, artists, albums, and artwork tags.",
+                            text = "All analyzed songs have verified titles, artists, albums, and artwork tags.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { startScan() },
+                            shape = PillShape
+                        ) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Scan Again")
+                        }
                     }
                 }
             }
 
+            // Suggestions found (or scanning in background while streaming)
             else -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = BottomListScrollPadding),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Header Card with "Apply all high confidence" button
+                    // Live scan status card if scanning continues in background
+                    if (isScanning) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        val progress = scanProgress
+                                        val statusText = if (progress != null && progress.total > 0) {
+                                            "Scanning (${progress.current}/${progress.total}) • ${suggestions.size} found"
+                                        } else {
+                                            "Scanning library • ${suggestions.size} found"
+                                        }
+                                        Text(
+                                            text = statusText,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        if (progress != null) {
+                                            Text(
+                                                text = progress.currentSongTitle,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                    TextButton(onClick = { stopScan() }) {
+                                        Text("Stop", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Header Card with responsive, non-crushed Action Button
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -211,60 +362,69 @@ fun FixMetadataScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = "${activeSuggestions.size} issues found",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = "$highConfidenceCount high confidence matches",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        text = "${activeSuggestions.size} issues found",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "$highConfidenceCount high confidence • Writes directly to file tags",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
 
-                                    if (highConfidenceCount > 0) {
-                                        Button(
-                                            onClick = {
-                                                isApplyingAll = true
-                                                scope.launch(Dispatchers.IO) {
-                                                    val highItems = suggestions.filter {
-                                                        !it.isApplied && !it.isSkipped && it.confidence == MetadataConfidence.HIGH
-                                                    }
-                                                    for (item in highItems) {
-                                                        MetadataSuggestionService.applySuggestion(context, item)
-                                                        val idx = suggestions.indexOfFirst { it.song.id == item.song.id }
-                                                        if (idx != -1) {
-                                                            suggestions[idx] = suggestions[idx].copy(isApplied = true)
-                                                        }
-                                                    }
-                                                    isApplyingAll = false
+                                if (highConfidenceCount > 0) {
+                                    Button(
+                                        onClick = {
+                                            isApplyingAll = true
+                                            scope.launch(Dispatchers.IO) {
+                                                val highItems = suggestions.filter {
+                                                    !it.isApplied && !it.isSkipped && it.confidence == MetadataConfidence.HIGH
                                                 }
-                                            },
-                                            enabled = !isApplyingAll,
-                                            shape = PillShape
-                                        ) {
-                                            if (isApplyingAll) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(16.dp),
-                                                    strokeWidth = 2.dp,
-                                                    color = MaterialTheme.colorScheme.onPrimary
-                                                )
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                            } else {
-                                                Icon(Icons.Rounded.AutoFixHigh, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                Spacer(modifier = Modifier.width(6.dp))
+                                                for (item in highItems) {
+                                                    MetadataSuggestionService.applySuggestion(context, item)
+                                                    val idx = suggestions.indexOfFirst { it.song.id == item.song.id }
+                                                    if (idx != -1) {
+                                                        suggestions[idx] = suggestions[idx].copy(isApplied = true)
+                                                    }
+                                                }
+                                                isApplyingAll = false
                                             }
-                                            Text("Apply all high confidence", style = MaterialTheme.typography.labelMedium)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled = !isApplyingAll,
+                                        shape = PillShape,
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                    ) {
+                                        if (isApplyingAll) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                strokeWidth = 2.dp,
+                                                color = MaterialTheme.colorScheme.onPrimary
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Applying tags to files...",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Rounded.AutoFixHigh,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Apply all high confidence ($highConfidenceCount)",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
                                         }
                                     }
                                 }
@@ -443,7 +603,7 @@ private fun SuggestionCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "Applied successfully",
+                        text = "Embedded into file tags & artwork updated",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
@@ -463,7 +623,7 @@ private fun SuggestionCard(
                         onClick = onApply,
                         shape = PillShape
                     ) {
-                        Text("Apply")
+                        Text("Apply to file")
                     }
                 }
             }

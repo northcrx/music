@@ -15,6 +15,8 @@ import android.os.Looper
 import com.nishant.northmusic.data.model.AudioOutputDevice
 import com.nishant.northmusic.data.model.DeviceProfile
 import com.nishant.northmusic.data.model.EqualizerPreset
+import com.nishant.northmusic.data.model.DeviceSoundProfile
+import com.nishant.northmusic.data.model.DeviceSoundProfiles
 import com.nishant.northmusic.data.model.EqualizerState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +31,7 @@ object AudioFxManager {
     private const val KEY_MASTER_ENABLED = "master_enabled"
     private const val KEY_NORMALIZATION_ENABLED = "loudness_normalization_enabled"
     private const val KEY_PROFILES_JSON = "device_profiles_json"
+    private const val KEY_SELECTED_PROFILE_ID = "selected_device_profile_id"
 
     private var currentSessionId: Int = 0
     private var equalizer: Equalizer? = null
@@ -88,6 +91,7 @@ object AudioFxManager {
     private fun updateCurrentDevice(am: AudioManager) {
         val devices = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
         var detected = AudioOutputDevice.SPEAKER
+        var detectedName: String? = null
 
         for (device in devices) {
             when (device.type) {
@@ -96,6 +100,10 @@ object AudioFxManager {
                 AudioDeviceInfo.TYPE_BLE_HEADSET,
                 AudioDeviceInfo.TYPE_BLE_SPEAKER -> {
                     detected = AudioOutputDevice.BLUETOOTH
+                    val pName = device.productName?.toString()
+                    if (!pName.isNullOrBlank()) {
+                        detectedName = pName
+                    }
                     break
                 }
                 AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
@@ -104,14 +112,40 @@ object AudioFxManager {
                 AudioDeviceInfo.TYPE_USB_DEVICE -> {
                     if (detected != AudioOutputDevice.BLUETOOTH) {
                         detected = AudioOutputDevice.WIRED
+                        val pName = device.productName?.toString()
+                        if (!pName.isNullOrBlank()) {
+                            detectedName = pName
+                        }
                     }
                 }
                 else -> {}
             }
         }
 
-        if (_equalizerState.value.currentDevice != detected) {
-            _equalizerState.update { it.copy(currentDevice = detected) }
+        val previousDevice = _equalizerState.value.currentDevice
+        val previousName = _equalizerState.value.connectedDeviceName
+
+        if (previousDevice != detected || previousName != detectedName) {
+            val matched = DeviceSoundProfiles.matchProfile(detectedName)
+            _equalizerState.update { current ->
+                var state = current.copy(
+                    currentDevice = detected,
+                    connectedDeviceName = detectedName,
+                    matchedProfile = matched ?: current.matchedProfile
+                )
+                if (matched != null && state.activeProfile.isAutoMode) {
+                    val activeProfile = state.activeProfile.copy(
+                        bandGains = adaptGainsToBandCount(matched.bandGains, numberOfBands),
+                        bassBoostPercent = matched.bassBoostPercent,
+                        virtualizerPercent = matched.virtualizerPercent
+                    )
+                    val updatedProfiles = state.profiles.toMutableMap().apply {
+                        put(detected, activeProfile)
+                    }
+                    state = state.copy(profiles = updatedProfiles)
+                }
+                state
+            }
             applyCurrentProfileToHardware()
         }
     }
@@ -245,12 +279,128 @@ object AudioFxManager {
         applyCurrentProfileToHardware()
     }
 
-    fun selectPreset(preset: EqualizerPreset) {
+    fun selectSoundProfile(profile: DeviceSoundProfile) {
         _equalizerState.update { current ->
             val activeDevice = current.currentDevice
             val activeProfile = current.activeProfile.copy(
+                isAutoMode = false,
+                bandGains = adaptGainsToBandCount(profile.bandGains, numberOfBands),
+                bassBoostPercent = profile.bassBoostPercent,
+                virtualizerPercent = profile.virtualizerPercent
+            )
+            val updatedProfiles = current.profiles.toMutableMap().apply {
+                put(activeDevice, activeProfile)
+            }
+            current.copy(
+                matchedProfile = profile,
+                profiles = updatedProfiles
+            )
+        }
+        persistState()
+        applyCurrentProfileToHardware()
+    }
+
+    fun setWooferLevel(gainDb: Float) {
+        _equalizerState.update { current ->
+            val activeDevice = current.currentDevice
+            val activeProfile = current.activeProfile.copy(wooferLevelDb = gainDb.coerceIn(-6f, 6f))
+            val updatedProfiles = current.profiles.toMutableMap().apply {
+                put(activeDevice, activeProfile)
+            }
+            current.copy(profiles = updatedProfiles)
+        }
+        persistState()
+        applyCurrentProfileToHardware()
+    }
+
+    fun toggleSurroundExpanded(enabled: Boolean) {
+        _equalizerState.update { current ->
+            val activeDevice = current.currentDevice
+            val activeProfile = current.activeProfile.copy(isSurroundExpanded = enabled)
+            val updatedProfiles = current.profiles.toMutableMap().apply {
+                put(activeDevice, activeProfile)
+            }
+            current.copy(profiles = updatedProfiles)
+        }
+        persistState()
+        applyCurrentProfileToHardware()
+    }
+
+    fun toggleVoiceEnhanced(enabled: Boolean) {
+        _equalizerState.update { current ->
+            val activeDevice = current.currentDevice
+            val activeProfile = current.activeProfile.copy(isVoiceEnhanced = enabled)
+            val updatedProfiles = current.profiles.toMutableMap().apply {
+                put(activeDevice, activeProfile)
+            }
+            current.copy(profiles = updatedProfiles)
+        }
+        persistState()
+        applyCurrentProfileToHardware()
+    }
+
+    fun toggleNightMode(enabled: Boolean) {
+        _equalizerState.update { current ->
+            val activeDevice = current.currentDevice
+            val activeProfile = current.activeProfile.copy(isNightMode = enabled)
+            val updatedProfiles = current.profiles.toMutableMap().apply {
+                put(activeDevice, activeProfile)
+            }
+            current.copy(profiles = updatedProfiles)
+        }
+        persistState()
+        applyCurrentProfileToHardware()
+    }
+
+    fun toggleBassBoostMode(enabled: Boolean) {
+        _equalizerState.update { current ->
+            val activeDevice = current.currentDevice
+            val activeProfile = current.activeProfile.copy(isBassBoostMode = enabled)
+            val updatedProfiles = current.profiles.toMutableMap().apply {
+                put(activeDevice, activeProfile)
+            }
+            current.copy(profiles = updatedProfiles)
+        }
+        persistState()
+        applyCurrentProfileToHardware()
+    }
+
+    fun resetToCalibratedProfile() {
+        val current = _equalizerState.value
+        val profile = current.matchedProfile ?: return
+        _equalizerState.update { state ->
+            val activeDevice = state.currentDevice
+            val activeProfile = state.activeProfile.copy(
+                isAutoMode = true,
+                bandGains = adaptGainsToBandCount(profile.bandGains, numberOfBands),
+                bassBoostPercent = profile.bassBoostPercent,
+                virtualizerPercent = profile.virtualizerPercent,
+                wooferLevelDb = 0f,
+                isSurroundExpanded = false,
+                isVoiceEnhanced = false,
+                isNightMode = false,
+                isBassBoostMode = false
+            )
+            val updatedProfiles = state.profiles.toMutableMap().apply {
+                put(activeDevice, activeProfile)
+            }
+            state.copy(profiles = updatedProfiles)
+        }
+        persistState()
+        applyCurrentProfileToHardware()
+    }
+
+    fun selectPreset(preset: EqualizerPreset?) {
+        _equalizerState.update { current ->
+            val activeDevice = current.currentDevice
+            val gains = if (preset != null) {
+                adaptGainsToBandCount(preset.bandGains, numberOfBands)
+            } else {
+                List(numberOfBands) { 0f }
+            }
+            val activeProfile = current.activeProfile.copy(
                 selectedPreset = preset,
-                bandGains = adaptGainsToBandCount(preset.bandGains, numberOfBands)
+                bandGains = gains
             )
             val updatedProfiles = current.profiles.toMutableMap().apply {
                 put(activeDevice, activeProfile)
@@ -273,7 +423,7 @@ object AudioFxManager {
             }
             val activeProfile = current.activeProfile.copy(
                 bandGains = currentBands,
-                selectedPreset = EqualizerPreset.FLAT // manual tweak detaches from preset
+                selectedPreset = null // manual tweak detaches from preset
             )
             val updatedProfiles = current.profiles.toMutableMap().apply {
                 put(activeDevice, activeProfile)
@@ -364,12 +514,59 @@ object AudioFxManager {
         val isMasterOn = state.isMasterEnabled
         val profile = state.activeProfile
 
-        val effectiveGains: List<Float> = if (profile.isAutoMode) {
-            val (_, autoGains) = computeAutoPresetForGenre(state.detectedGenre, state.currentDevice)
-            adaptGainsToBandCount(autoGains, numberOfBands)
+        val baseGains: List<Float> = if (profile.isAutoMode) {
+            if (state.matchedProfile != null) {
+                adaptGainsToBandCount(state.matchedProfile.bandGains, numberOfBands)
+            } else {
+                val (_, autoGains) = computeAutoPresetForGenre(state.detectedGenre, state.currentDevice)
+                adaptGainsToBandCount(autoGains, numberOfBands)
+            }
         } else {
             adaptGainsToBandCount(profile.bandGains, numberOfBands)
         }
+
+        // Apply Control Deck acoustic modifiers
+        val effectiveGains = baseGains.mapIndexed { index, gain ->
+            var modified = gain
+            when (index) {
+                0 -> { // Sub-bass / Woofer
+                    modified += profile.wooferLevelDb
+                    if (profile.isBassBoostMode) modified += 2.5f
+                    if (profile.isNightMode) modified -= 2.0f
+                }
+                1 -> { // Mid-bass
+                    if (profile.isNightMode) modified -= 1.0f
+                }
+                2 -> { // Midrange / Vocals
+                    if (profile.isVoiceEnhanced) modified += 2.0f
+                }
+                3 -> { // Treble / Dialogue clarity
+                    if (profile.isVoiceEnhanced) modified += 1.5f
+                }
+                4 -> { // Highs / Air
+                    if (profile.isNightMode) modified -= 1.5f
+                }
+            }
+            modified.coerceIn(minGainDb, maxGainDb)
+        }
+
+        val baseBassBoost: Float = if (profile.isAutoMode && state.matchedProfile != null) {
+            state.matchedProfile.bassBoostPercent
+        } else {
+            profile.bassBoostPercent
+        }
+        val effectiveBassBoost = if (profile.isBassBoostMode) {
+            (baseBassBoost + 0.25f).coerceIn(0f, 1f)
+        } else baseBassBoost
+
+        val baseVirtualizer: Float = if (profile.isAutoMode && state.matchedProfile != null) {
+            state.matchedProfile.virtualizerPercent
+        } else {
+            profile.virtualizerPercent
+        }
+        val effectiveVirtualizer = if (profile.isSurroundExpanded) {
+            (baseVirtualizer + 0.30f).coerceIn(0f, 1f)
+        } else baseVirtualizer
 
         try {
             equalizer?.let { eq ->
@@ -387,8 +584,8 @@ object AudioFxManager {
         try {
             bassBoost?.let { bb ->
                 if (isBassBoostSupported) {
-                    bb.enabled = isMasterOn && profile.bassBoostPercent > 0.05f
-                    val strength = (profile.bassBoostPercent * 1000).toInt().toShort()
+                    bb.enabled = isMasterOn && effectiveBassBoost > 0.05f
+                    val strength = (effectiveBassBoost * 1000).toInt().toShort()
                     bb.setStrength(strength)
                 }
             }
@@ -397,8 +594,8 @@ object AudioFxManager {
         try {
             virtualizer?.let { virt ->
                 if (isVirtualizerSupported) {
-                    virt.enabled = isMasterOn && profile.virtualizerPercent > 0.05f
-                    val strength = (profile.virtualizerPercent * 1000).toInt().toShort()
+                    virt.enabled = isMasterOn && effectiveVirtualizer > 0.05f
+                    val strength = (effectiveVirtualizer * 1000).toInt().toShort()
                     virt.setStrength(strength)
                 }
             }
@@ -407,7 +604,7 @@ object AudioFxManager {
         try {
             loudnessEnhancer?.let { le ->
                 le.enabled = isMasterOn
-                le.setTargetGain(150) // +1.5dB gentle normalization
+                le.setTargetGain(if (profile.isNightMode) 80 else 150)
             }
         } catch (_: Throwable) {}
     }
@@ -426,10 +623,17 @@ object AudioFxManager {
                     if (root.has(device.name)) {
                         val obj = root.getJSONObject(device.name)
                         val isAuto = obj.optBoolean("isAutoMode", true)
-                        val presetName = obj.optString("selectedPreset", EqualizerPreset.POP.name)
-                        val preset = try { EqualizerPreset.valueOf(presetName) } catch (_: Throwable) { EqualizerPreset.POP }
+                        val presetName = obj.optString("selectedPreset", "POP")
+                        val preset = if (presetName == "null" || presetName.isBlank()) null else {
+                            try { EqualizerPreset.valueOf(presetName) } catch (_: Throwable) { null }
+                        }
                         val bass = obj.optDouble("bassBoostPercent", 0.5).toFloat()
                         val virt = obj.optDouble("virtualizerPercent", 0.3).toFloat()
+                        val woofer = obj.optDouble("wooferLevelDb", 0.0).toFloat()
+                        val surround = obj.optBoolean("isSurroundExpanded", false)
+                        val voice = obj.optBoolean("isVoiceEnhanced", false)
+                        val night = obj.optBoolean("isNightMode", false)
+                        val bassMode = obj.optBoolean("isBassBoostMode", false)
 
                         val gainsArray = obj.optJSONArray("bandGains")
                         val gains = mutableListOf<Float>()
@@ -442,18 +646,27 @@ object AudioFxManager {
                             isEnabled = true,
                             isAutoMode = isAuto,
                             selectedPreset = preset,
-                            bandGains = gains.ifEmpty { preset.bandGains },
+                            bandGains = gains.ifEmpty { preset?.bandGains ?: List(numberOfBands) { 0f } },
                             bassBoostPercent = bass,
-                            virtualizerPercent = virt
+                            virtualizerPercent = virt,
+                            wooferLevelDb = woofer,
+                            isSurroundExpanded = surround,
+                            isVoiceEnhanced = voice,
+                            isNightMode = night,
+                            isBassBoostMode = bassMode
                         )
                     }
                 }
             } catch (_: Throwable) {}
         }
 
+        val savedProfileId = p.getString(KEY_SELECTED_PROFILE_ID, null)
+        val savedProfile = DeviceSoundProfiles.ALL_PROFILES.find { it.id == savedProfileId }
+
         _equalizerState.update { current ->
             current.copy(
                 isMasterEnabled = master,
+                matchedProfile = savedProfile ?: current.matchedProfile,
                 profiles = if (profilesMap.isNotEmpty()) profilesMap else current.profiles
             )
         }
@@ -468,9 +681,14 @@ object AudioFxManager {
             state.profiles.forEach { (device, profile) ->
                 val obj = JSONObject().apply {
                     put("isAutoMode", profile.isAutoMode)
-                    put("selectedPreset", profile.selectedPreset.name)
+                    put("selectedPreset", profile.selectedPreset?.name ?: "null")
                     put("bassBoostPercent", profile.bassBoostPercent.toDouble())
                     put("virtualizerPercent", profile.virtualizerPercent.toDouble())
+                    put("wooferLevelDb", profile.wooferLevelDb.toDouble())
+                    put("isSurroundExpanded", profile.isSurroundExpanded)
+                    put("isVoiceEnhanced", profile.isVoiceEnhanced)
+                    put("isNightMode", profile.isNightMode)
+                    put("isBassBoostMode", profile.isBassBoostMode)
                     val arr = JSONArray()
                     profile.bandGains.forEach { arr.put(it.toDouble()) }
                     put("bandGains", arr)
@@ -478,10 +696,15 @@ object AudioFxManager {
                 root.put(device.name, obj)
             }
 
-            p.edit()
+            val editor = p.edit()
                 .putBoolean(KEY_MASTER_ENABLED, state.isMasterEnabled)
                 .putString(KEY_PROFILES_JSON, root.toString())
-                .apply()
+            if (state.matchedProfile != null) {
+                editor.putString(KEY_SELECTED_PROFILE_ID, state.matchedProfile.id)
+            } else {
+                editor.remove(KEY_SELECTED_PROFILE_ID)
+            }
+            editor.apply()
         } catch (_: Throwable) {}
     }
 }
